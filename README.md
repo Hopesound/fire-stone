@@ -22,6 +22,17 @@ node tools/serve.mjs 5173
 
 Then visit `http://127.0.0.1:5173`. Internet access is required for the Leaflet map library and OpenStreetMap tiles.
 
+## GitHub Pages
+
+This repository includes a GitHub Pages workflow at `.github/workflows/deploy-pages.yml`.
+After the `main` branch is pushed, the site is deployed through GitHub Actions and should be available at:
+
+```text
+https://hopesound.github.io/fire-stone/
+```
+
+If GitHub Pages still shows 404 after the workflow runs, open repository settings and confirm that **Settings -> Pages -> Source** is set to **GitHub Actions**.
+
 ## NASA FIRMS integration notes
 
 NASA FIRMS Area API format:

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fire Stone로 이동 중</title>
+    <script>
+      const repoBase = window.location.pathname.includes("/fire-stone/") ? "/fire-stone/" : "/";
+      window.location.replace(`${window.location.origin}${repoBase}`);
+    </script>
+  </head>
+  <body>
+    <p>
+      Fire Stone 페이지로 이동 중입니다.
+      <a href="/fire-stone/">바로 열기</a>
+    </p>
+  </body>
+</html>
