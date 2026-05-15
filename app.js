@@ -174,10 +174,55 @@
 
   L.control.zoom({ position: "topright" }).addTo(map);
 
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18,
-    attribution: "&copy; OpenStreetMap contributors"
-  }).addTo(map);
+  const baseLayers = {
+    street: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "&copy; OpenStreetMap contributors"
+    }),
+    imagery: L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 18,
+        attribution:
+          "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+      }
+    )
+  };
+
+  let activeBaseLayer = baseLayers.street.addTo(map);
+
+  L.control.layers(
+    {
+      "일반지도": baseLayers.street,
+      "항공사진": baseLayers.imagery
+    },
+    null,
+    { position: "topright", collapsed: true }
+  ).addTo(map);
+
+  function setBaseLayer(type) {
+    const nextLayer = baseLayers[type] || baseLayers.street;
+    if (activeBaseLayer === nextLayer) {
+      return;
+    }
+    map.removeLayer(activeBaseLayer);
+    activeBaseLayer = nextLayer.addTo(map);
+    document.querySelectorAll(".basemap-button").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.basemap === type);
+    });
+  }
+
+  document.querySelectorAll(".basemap-button").forEach((button) => {
+    button.addEventListener("click", () => setBaseLayer(button.dataset.basemap));
+  });
+
+  map.on("baselayerchange", (event) => {
+    const type = event.name === "항공사진" ? "imagery" : "street";
+    activeBaseLayer = baseLayers[type];
+    document.querySelectorAll(".basemap-button").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.basemap === type);
+    });
+  });
 
   const layers = {
     heritage: L.layerGroup().addTo(map),

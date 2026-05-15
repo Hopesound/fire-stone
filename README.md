@@ -5,6 +5,7 @@ NASA FIRMS hotspot data and Korean cultural heritage fire-risk monitoring protot
 ## What this draft includes
 
 - Interactive map for cultural heritage locations such as temples, historic houses, and heritage sites.
+- Street map and aerial-photo style basemap switching.
 - NASA FIRMS-compatible data adapter for VIIRS/MODIS area CSV queries.
 - Sample fire detection data so the prototype works without an API key.
 - 7-day and 14-day cumulative daily views.
