@@ -15,6 +15,7 @@ import { buildPreventionReport, summarizeReport } from "./analysis/prevention-re
 
 const LIST_LIMIT = 250;
 const RADIUS_LAYER_LIMIT = 80;
+const PAGE_IDS = new Set(["daily", "report", "heritage"]);
 
 export function createFireStoneApp() {
   const state = {
@@ -39,6 +40,7 @@ export function createFireStoneApp() {
   elements.dataStatus.textContent = `heritage 폴더 데이터 ${heritageSites.length.toLocaleString("ko-KR")}건을 분석 대상으로 불러왔습니다.`;
 
   bindEvents({ state, elements, mapState });
+  initPageNavigation(mapState);
   renderAll({ state, elements, mapState });
 }
 
@@ -153,6 +155,51 @@ function syncBaseButtons(type) {
   document.querySelectorAll(".basemap-button").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.basemap === type);
   });
+}
+
+function initPageNavigation(mapState) {
+  const links = Array.from(document.querySelectorAll(".nav-link"));
+  const pages = Array.from(document.querySelectorAll(".page-view"));
+
+  function pageFromHash() {
+    const page = window.location.hash.replace("#", "");
+    return PAGE_IDS.has(page) ? page : "daily";
+  }
+
+  function setPage(page) {
+    const activePage = PAGE_IDS.has(page) ? page : "daily";
+    links.forEach((link) => {
+      link.classList.toggle("is-active", link.dataset.page === activePage);
+      link.setAttribute("aria-current", link.dataset.page === activePage ? "page" : "false");
+    });
+    pages.forEach((pageElement) => {
+      pageElement.classList.toggle("is-active", pageElement.dataset.page === activePage);
+    });
+    requestAnimationFrame(() => {
+      mapState.map.invalidateSize();
+    });
+  }
+
+  links.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const nextPage = link.dataset.page;
+      if (!PAGE_IDS.has(nextPage)) {
+        return;
+      }
+      if (window.location.hash === `#${nextPage}`) {
+        setPage(nextPage);
+      } else {
+        window.location.hash = nextPage;
+      }
+    });
+  });
+
+  window.addEventListener("hashchange", () => {
+    setPage(pageFromHash());
+  });
+
+  setPage(pageFromHash());
 }
 
 function bindEvents({ state, elements, mapState }) {

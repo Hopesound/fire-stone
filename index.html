@@ -11,9 +11,14 @@
   </head>
   <body>
     <header class="app-header">
-      <div>
+      <div class="header-main">
         <p class="eyebrow">NASA FIRMS + Heritage Risk Analysis</p>
         <h1>Fire Stone</h1>
+        <nav class="app-nav" aria-label="분석 페이지">
+          <a class="nav-link is-active" href="#daily" data-page="daily">일별 감지·누적·위험 점수</a>
+          <a class="nav-link" href="#report" data-page="report">재난 예방 우선순위 보고서</a>
+          <a class="nav-link" href="#heritage" data-page="heritage">문화유산 인근 재해 위험도</a>
+        </nav>
       </div>
       <div class="header-metrics" aria-label="선택 기간 분석 요약">
         <div>
@@ -140,7 +145,7 @@
         </div>
       </section>
 
-      <section class="analytics-band" aria-label="시계열 분석과 알림 후보">
+      <section id="page-daily" class="page-view analytics-band is-active" data-page="daily" aria-label="일별 감지, 누적, 위험 점수">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Daily cumulative view</p>
@@ -160,7 +165,7 @@
         </div>
       </section>
 
-      <section class="report-band" aria-label="정량 위험 보고서">
+      <section id="page-report" class="page-view report-band" data-page="report" aria-label="재난 예방 우선순위 보고서">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Decision report</p>
@@ -194,7 +199,7 @@
         </div>
       </section>
 
-      <section class="heritage-band" aria-label="문화유산별 재해 위험도 관리">
+      <section id="page-heritage" class="page-view heritage-band" data-page="heritage" aria-label="문화유산 인근 재해 위험도">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Heritage risk management</p>
