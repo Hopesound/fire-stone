@@ -1,39 +1,68 @@
-# fire-stone
+# Fire Stone
 
-NASA FIRMS hotspot data and Korean cultural heritage fire-risk monitoring prototype.
+문화유산 위치 기반 재해 위험도 자동 분석 프로그램 초안입니다. NASA FIRMS 활성 화재/열적 이상 데이터를 문화유산 위치와 결합해 반경 내 위험 점수, 등급, 알림 후보, 지도 시각화를 제공합니다.
 
-## What this draft includes
+## 포함 기능
 
-- Interactive map for cultural heritage locations such as temples, historic houses, and heritage sites.
-- Street map and aerial-photo style basemap switching.
-- NASA FIRMS-compatible data adapter for VIIRS/MODIS area CSV queries.
-- Sample fire detection data so the prototype works without an API key.
-- 7-day and 14-day cumulative daily views.
-- Hotspot-area visualization based on clustered detections.
-- Heritage-nearby fire history, risk level, management status, notes, and CSV export.
+- 문화유산 위치 지도 표시, 일반지도/항공사진 전환
+- NASA FIRMS Area API 호환 CSV 수집 어댑터
+- MAP_KEY 없이 검토 가능한 샘플 FIRMS 픽셀 데이터
+- 1주/2주 일별 감지 수, 누적 위험 점수 차트
+- 거리 가중 FRP 기반 위험도 자동 산출
+- 문화유산별 인근 화재 픽셀 이력, 관리 상태, 메모, CSV 내보내기
+- 주의/높음 등급 문화유산 알림 후보 목록
 
-## Open the prototype
+## 구조
 
-Open `index.html` in a browser, or run a local static server:
-
-```powershell
-node tools/serve.mjs 5173
+```text
+app.js                         # 브라우저 진입점
+src/config.js                  # 분석 기본값과 라벨
+src/data/heritage-sites.js     # 문화유산 위치 샘플 데이터
+src/data/sample-firms.js       # FIRMS 형태 샘플 데이터 생성
+src/services/firms-api.js      # NASA FIRMS Area API 수집/CSV 파서
+src/services/storage.js        # 관리 상태 로컬 저장
+src/analysis/risk-engine.js    # 반경 검색, 거리 가중치, 위험 점수, 알림 후보
+src/main.js                    # 지도/대시보드 UI 조립
 ```
 
-Then visit `http://127.0.0.1:5173`. Internet access is required for the Leaflet map library and OpenStreetMap tiles.
+## 위험도 공식
+
+각 문화유산 반경 `r` 안의 화재 픽셀에 대해 거리 `d`를 계산하고, 다음 가중치를 적용합니다.
+
+```text
+weight = 1 / (1 + (d / r)^2)
+risk_score = sum(weight * FRP)
+```
+
+기본 등급:
+
+- 높음: `risk_score >= 50`
+- 주의: `10 <= risk_score < 50`
+- 낮음: `risk_score < 10`
+
+임계값은 화면 좌측 `위험도 기준`에서 조정할 수 있습니다.
+
+## 실행
+
+`index.html`을 직접 열거나 로컬 정적 서버를 실행합니다.
+
+```powershell
+npm run serve
+```
+
+그 다음 `http://127.0.0.1:5173`으로 접속합니다. Leaflet, 지도 타일, 항공사진 타일을 불러오기 위해 인터넷 연결이 필요합니다.
 
 ## GitHub Pages
 
-This repository includes a GitHub Pages workflow at `.github/workflows/deploy-pages.yml`.
-After the `main` branch is pushed, the site is deployed through GitHub Actions and should be available at:
+이 저장소는 `.github/workflows/deploy-pages.yml`로 GitHub Pages 자동 배포를 수행합니다. `main` 브랜치가 push되면 다음 주소에서 확인할 수 있습니다.
 
 ```text
 https://hopesound.github.io/fire-stone/
 ```
 
-If GitHub Pages still shows 404 after the workflow runs, open repository settings and confirm that **Settings -> Pages -> Source** is set to **GitHub Actions**.
+GitHub Pages가 계속 404를 보이면 저장소 설정에서 **Settings -> Pages -> Source**가 **GitHub Actions**인지 확인합니다.
 
-## NASA FIRMS integration notes
+## NASA FIRMS 연동 메모
 
 NASA FIRMS Area API format:
 
@@ -41,22 +70,22 @@ NASA FIRMS Area API format:
 https://firms.modaps.eosdis.nasa.gov/api/area/csv/[MAP_KEY]/[SOURCE]/[AREA_COORDINATES]/[DAY_RANGE]/[DATE]
 ```
 
-Important constraints used by this prototype:
+현재 초안에 반영한 제약:
 
-- `DAY_RANGE` supports 1 to 10 days per request, so a 14-day view is split into multiple FIRMS calls.
-- `AREA_COORDINATES` uses `west,south,east,north`.
-- `DATE` is the query start date in `YYYY-MM-DD`.
-- A free FIRMS `MAP_KEY` is required for live data.
+- `DAY_RANGE`는 1~10일 요청을 기준으로 하므로 14일 조회는 여러 요청으로 분할합니다.
+- `AREA_COORDINATES`는 `west,south,east,north` 순서입니다.
+- `DATE`는 조회 시작일이며 `YYYY-MM-DD` 형식입니다.
+- 실시간 데이터 조회에는 FIRMS `MAP_KEY`가 필요합니다.
 
 Official references:
 
 - https://firms.modaps.eosdis.nasa.gov/api/area/csv
 - https://firms2.modaps.eosdis.nasa.gov/api/
 
-## Suggested next build steps
+## 다음 구현 단계
 
-1. Replace the sample `heritageSites` array in `app.js` with an official cultural-heritage dataset.
-2. Add a small backend proxy for FIRMS requests if browser CORS or key handling becomes an issue.
-3. Store inspection status, notes, and incident records in a database instead of local storage.
-4. Add user roles for managers, field inspectors, and analysts.
-5. Add notifications when a new FIRMS detection appears within a managed radius.
+1. `src/data/heritage-sites.js`를 국가유산청/UNESCO 공식 데이터로 교체합니다.
+2. 브라우저 CORS나 키 보호가 필요하면 FastAPI 프록시를 추가합니다.
+3. 관리 상태와 분석 결과를 PostgreSQL + PostGIS에 저장합니다.
+4. `src/analysis/risk-engine.js`의 임계값을 과거 데이터로 보정합니다.
+5. 알림 후보를 이메일/SMS/모바일 푸시로 연결합니다.

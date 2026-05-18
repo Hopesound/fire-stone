@@ -80,9 +80,9 @@ button {
 
 .header-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(90px, 1fr));
+  grid-template-columns: repeat(4, minmax(90px, 1fr));
   gap: 10px;
-  min-width: min(520px, 52vw);
+  min-width: min(680px, 58vw);
 }
 
 .header-metrics div {
@@ -225,6 +225,12 @@ button {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 9px;
+}
+
+.threshold-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 .icon-button,
@@ -384,6 +390,79 @@ button {
   overflow-x: auto;
 }
 
+.analytics-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 330px);
+  gap: 18px;
+}
+
+.alerts-panel {
+  min-height: 260px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.panel-title-row h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.score-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eee8dc;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.alert-list {
+  display: grid;
+  gap: 8px;
+}
+
+.alert-item {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf1;
+  text-align: left;
+}
+
+.alert-item strong {
+  font-size: 0.9rem;
+}
+
+.alert-item small,
+.empty-alert {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.empty-alert {
+  min-height: 190px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
 .chart-svg {
   display: block;
   min-width: 760px;
@@ -527,7 +606,7 @@ button {
 
 .detail-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
 
@@ -587,6 +666,14 @@ button {
   background: var(--teal);
 }
 
+.heritage-marker.risk-high {
+  box-shadow: 0 0 0 4px rgba(201, 74, 53, 0.3), 0 3px 10px rgba(0, 0, 0, 0.22);
+}
+
+.heritage-marker.risk-medium {
+  box-shadow: 0 0 0 4px rgba(215, 146, 38, 0.26), 0 3px 10px rgba(0, 0, 0, 0.22);
+}
+
 .leaflet-popup-content {
   margin: 11px 13px;
   min-width: 190px;
@@ -640,6 +727,11 @@ button {
 
   .header-metrics,
   .detail-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .threshold-grid,
+  .analytics-grid {
     grid-template-columns: 1fr;
   }
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Fire Stone | 문화유산 화재위험 관제 초안</title>
+    <title>Fire Stone | 문화유산 위치 기반 재해 위험도 자동 분석</title>
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://tile.openstreetmap.org">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -12,35 +12,39 @@
   <body>
     <header class="app-header">
       <div>
-        <p class="eyebrow">NASA FIRMS + 문화유산 화재위험 관제</p>
+        <p class="eyebrow">NASA FIRMS + Heritage Risk Analysis</p>
         <h1>Fire Stone</h1>
       </div>
-      <div class="header-metrics" aria-label="선택 기간 요약">
+      <div class="header-metrics" aria-label="선택 기간 분석 요약">
         <div>
           <span id="metricDetections">0</span>
-          <small>감지 지점</small>
+          <small>활성 화재 픽셀</small>
         </div>
         <div>
-          <span id="metricHotspotArea">0 km²</span>
-          <small>핫스팟 면적</small>
+          <span id="metricRiskScore">0.0</span>
+          <small>가중 위험 점수</small>
         </div>
         <div>
           <span id="metricAtRisk">0</span>
-          <small>인근 이력 문화유산</small>
+          <small>위험 문화유산</small>
+        </div>
+        <div>
+          <span id="metricAlerts">0</span>
+          <small>알림 후보</small>
         </div>
       </div>
     </header>
 
     <main class="app-shell">
-      <aside class="control-panel" aria-label="지도와 데이터 필터">
+      <aside class="control-panel" aria-label="데이터와 위험도 조건">
         <section class="panel-section">
           <h2>데이터 조건</h2>
           <label class="field">
-            <span>종료일</span>
+            <span>분석 종료일</span>
             <input id="endDate" type="date">
           </label>
           <div class="field">
-            <span>누적 단위</span>
+            <span>누적 기간</span>
             <div class="segmented" role="group" aria-label="누적 기간">
               <button class="segment is-active" type="button" data-range="7">1주</button>
               <button class="segment" type="button" data-range="14">2주</button>
@@ -56,13 +60,27 @@
             </select>
           </label>
           <label class="field">
-            <span>최소 신뢰도 <strong id="confidenceValue">50</strong></span>
-            <input id="confidenceRange" type="range" min="0" max="100" step="5" value="50">
+            <span>최소 신뢰도 <strong id="confidenceValue">70</strong></span>
+            <input id="confidenceRange" type="range" min="0" max="100" step="5" value="70">
           </label>
           <label class="field">
-            <span>문화유산 주변 반경 <strong id="radiusValue">10 km</strong></span>
+            <span>분석 반경 <strong id="radiusValue">10 km</strong></span>
             <input id="radiusRange" type="range" min="2" max="30" step="1" value="10">
           </label>
+        </section>
+
+        <section class="panel-section">
+          <h2>위험도 기준</h2>
+          <div class="threshold-grid">
+            <label class="field">
+              <span>주의 기준</span>
+              <input id="mediumThreshold" type="number" min="0" step="1" value="10">
+            </label>
+            <label class="field">
+              <span>높음 기준</span>
+              <input id="highThreshold" type="number" min="1" step="1" value="50">
+            </label>
+          </div>
         </section>
 
         <section class="panel-section">
@@ -109,7 +127,7 @@
         <div class="map-overlay">
           <div class="overlay-item">
             <span class="swatch fire"></span>
-            <span>감지 지점</span>
+            <span>활성 화재 픽셀</span>
           </div>
           <div class="overlay-item">
             <span class="swatch area"></span>
@@ -117,27 +135,36 @@
           </div>
           <div class="overlay-item">
             <span class="swatch radius"></span>
-            <span>관리 반경</span>
+            <span>분석 반경</span>
           </div>
         </div>
       </section>
 
-      <section class="analytics-band" aria-label="일별 누적 분석">
+      <section class="analytics-band" aria-label="시계열 분석과 알림 후보">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Daily cumulative view</p>
-            <h2>일별 감지와 누적 추이</h2>
+            <h2>일별 감지·누적·위험 점수</h2>
           </div>
           <button id="exportCsv" class="secondary-button" type="button">CSV 내보내기</button>
         </div>
-        <div id="dailyChart" class="daily-chart" aria-label="일별 감지 수와 누적 수 차트"></div>
+        <div class="analytics-grid">
+          <div id="dailyChart" class="daily-chart" aria-label="일별 감지 수와 누적 수 차트"></div>
+          <aside class="alerts-panel" aria-label="위험 알림 후보">
+            <div class="panel-title-row">
+              <h3>알림 후보</h3>
+              <span id="alertPolicy" class="score-pill">주의 이상</span>
+            </div>
+            <div id="alertList" class="alert-list"></div>
+          </aside>
+        </div>
       </section>
 
       <section class="heritage-band" aria-label="문화유산별 화재 이력 관리">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Heritage risk management</p>
-            <h2>문화유산 인근 화재 이력</h2>
+            <h2>문화유산 인근 재해 위험도</h2>
           </div>
           <div class="risk-filter" role="group" aria-label="위험도 필터">
             <button class="risk-chip is-active" type="button" data-risk="all">전체</button>
@@ -160,12 +187,16 @@
               </div>
               <div class="detail-stats">
                 <div>
-                  <span id="detailCount">0</span>
-                  <small>반경 내 감지</small>
+                  <span id="detailScore">0.0</span>
+                  <small>위험 점수</small>
                 </div>
                 <div>
-                  <span id="detailLast">-</span>
-                  <small>최근 감지일</small>
+                  <span id="detailCount">0</span>
+                  <small>반경 내 픽셀</small>
+                </div>
+                <div>
+                  <span id="detailFrp">0.0</span>
+                  <small>FRP 합계</small>
                 </div>
                 <div>
                   <span id="detailDistance">-</span>
@@ -187,7 +218,7 @@
               </label>
               <button id="saveManagement" class="primary-button" type="button">저장</button>
               <div>
-                <h4>기간 내 이력</h4>
+                <h4>기간 내 위험 이력</h4>
                 <div id="historyTimeline" class="timeline"></div>
               </div>
             </div>
@@ -197,6 +228,6 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
   </body>
 </html>
