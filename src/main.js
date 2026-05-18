@@ -88,6 +88,10 @@ function collectElements() {
 }
 
 function initMap() {
+  if (!document.getElementById("map")) {
+    return null;
+  }
+
   const map = L.map("map", {
     zoomControl: false,
     preferCanvas: true
@@ -163,21 +167,28 @@ function initPageNavigation(mapState) {
 
   function pageFromHash() {
     const page = window.location.hash.replace("#", "");
-    return PAGE_IDS.has(page) ? page : "daily";
+    return PAGE_IDS.has(page) ? page : null;
+  }
+
+  function pageFromDocument() {
+    const page = document.body.dataset.page || "";
+    return PAGE_IDS.has(page) ? page : null;
   }
 
   function setPage(page, options = {}) {
-    const activePage = PAGE_IDS.has(page) ? page : "daily";
+    const activePage = PAGE_IDS.has(page) ? page : null;
     const activePageElement = pages.find((pageElement) => pageElement.dataset.page === activePage);
     links.forEach((link) => {
       link.classList.toggle("is-active", link.dataset.page === activePage);
       link.setAttribute("aria-current", link.dataset.page === activePage ? "page" : "false");
     });
     pages.forEach((pageElement) => {
-      pageElement.classList.toggle("is-active", pageElement.dataset.page === activePage);
+      pageElement.classList.toggle("is-active", Boolean(activePage) && pageElement.dataset.page === activePage);
     });
     requestAnimationFrame(() => {
-      mapState.map.invalidateSize();
+      if (mapState?.map) {
+        mapState.map.invalidateSize();
+      }
       if (options.scrollToPage && activePageElement) {
         activePageElement.scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -186,6 +197,9 @@ function initPageNavigation(mapState) {
 
   links.forEach((link) => {
     link.addEventListener("click", (event) => {
+      if (link.dataset.route === "page") {
+        return;
+      }
       event.preventDefault();
       const nextPage = link.dataset.page;
       if (!PAGE_IDS.has(nextPage)) {
@@ -204,7 +218,7 @@ function initPageNavigation(mapState) {
     setPage(pageFromHash());
   });
 
-  setPage(pageFromHash());
+  setPage(pageFromDocument() || pageFromHash());
 }
 
 function bindEvents({ state, elements, mapState }) {
@@ -290,19 +304,19 @@ function bindEvents({ state, elements, mapState }) {
     await loadLiveFirms({ state, elements, mapState });
   });
 
-  elements.exportCsv.addEventListener("click", () => {
+  elements.exportCsv?.addEventListener("click", () => {
     exportCurrentCsv({ state, elements });
   });
 
-  elements.exportReportCsv.addEventListener("click", () => {
+  elements.exportReportCsv?.addEventListener("click", () => {
     exportPreventionReport({ state, elements, format: "csv" });
   });
 
-  elements.exportReportJson.addEventListener("click", () => {
+  elements.exportReportJson?.addEventListener("click", () => {
     exportPreventionReport({ state, elements, format: "json" });
   });
 
-  elements.saveManagement.addEventListener("click", () => {
+  elements.saveManagement?.addEventListener("click", () => {
     if (!state.selectedSiteId) {
       return;
     }
@@ -367,13 +381,25 @@ function renderAll({ state, elements, mapState }) {
     highThreshold: state.highThreshold
   });
 
-  renderMap({ state, elements, mapState, sites: filteredSites, detections: filteredDetections, summaries, hotspots });
+  if (mapState?.map) {
+    renderMap({ state, elements, mapState, sites: filteredSites, detections: filteredDetections, summaries, hotspots });
+  }
   renderMetrics({ elements, detections: filteredDetections, summaries, alerts });
-  renderDailyChart(elements.dailyChart, daily);
-  renderAlerts({ state, elements, mapState, alerts, summaries });
-  renderPreventionReport({ state, elements, mapState, report, summaries });
-  renderHeritageList({ state, elements, summaries, mapState });
-  renderSelectedDetail({ state, elements, summaries });
+  if (elements.dailyChart) {
+    renderDailyChart(elements.dailyChart, daily);
+  }
+  if (elements.alertList) {
+    renderAlerts({ state, elements, mapState, alerts, summaries });
+  }
+  if (elements.reportSummary && elements.reportTable && elements.reportDetail) {
+    renderPreventionReport({ state, elements, mapState, report, summaries });
+  }
+  if (elements.heritageList) {
+    renderHeritageList({ state, elements, summaries, mapState });
+  }
+  if (elements.detailContent) {
+    renderSelectedDetail({ state, elements, summaries });
+  }
 }
 
 function renderMap({ state, elements, mapState, sites, detections, summaries, hotspots }) {
@@ -558,10 +584,14 @@ function renderAlerts({ state, elements, mapState, alerts, summaries }) {
         return;
       }
       state.selectedSiteId = summary.site.id;
-      renderSelectedDetail({ state, elements, summaries });
-      mapState.map.setView([summary.site.lat, summary.site.lng], Math.max(mapState.map.getZoom(), 10), {
-        animate: true
-      });
+      if (elements.detailContent) {
+        renderSelectedDetail({ state, elements, summaries });
+      }
+      if (mapState?.map) {
+        mapState.map.setView([summary.site.lat, summary.site.lng], Math.max(mapState.map.getZoom(), 10), {
+          animate: true
+        });
+      }
     });
   });
 }
@@ -621,10 +651,14 @@ function renderPreventionReport({ state, elements, mapState, report, summaries }
       const summary = summaries.find((item) => item.site.id === row.dataset.siteId);
       state.selectedSiteId = row.dataset.siteId;
       if (summary) {
-        renderSelectedDetail({ state, elements, summaries });
-        mapState.map.setView([summary.site.lat, summary.site.lng], Math.max(mapState.map.getZoom(), 10), {
-          animate: true
-        });
+        if (elements.detailContent) {
+          renderSelectedDetail({ state, elements, summaries });
+        }
+        if (mapState?.map) {
+          mapState.map.setView([summary.site.lat, summary.site.lng], Math.max(mapState.map.getZoom(), 10), {
+            animate: true
+          });
+        }
       }
       renderReportDetail(elements.reportDetail, report.find((item) => item.id === row.dataset.siteId));
       elements.reportTable.querySelectorAll(".report-row").forEach((item) => item.classList.remove("is-selected"));
@@ -732,9 +766,11 @@ function renderHeritageList({ state, elements, summaries, mapState }) {
       state.selectedSiteId = card.dataset.siteId;
       renderSelectedDetail({ state, elements, summaries });
       if (summary) {
-        mapState.map.setView([summary.site.lat, summary.site.lng], Math.max(mapState.map.getZoom(), 10), {
-          animate: true
-        });
+        if (mapState?.map) {
+          mapState.map.setView([summary.site.lat, summary.site.lng], Math.max(mapState.map.getZoom(), 10), {
+            animate: true
+          });
+        }
       }
     });
   });

@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="styles.css">
   </head>
-  <body>
+  <body class="dashboard-page" data-page="dashboard">
     <header class="app-header">
       <div class="header-main">
         <p class="eyebrow">NASA FIRMS + Heritage Risk Analysis</p>
@@ -35,18 +35,9 @@
           </div>
         </div>
         <nav class="app-nav" aria-label="분석 페이지">
-          <a class="nav-link is-active" href="#daily" data-page="daily">
-            <strong>일별 감지·누적 위험 점수</strong>
-            <span>기간별 감지 수와 누적 점수</span>
-          </a>
-          <a class="nav-link" href="#report" data-page="report">
-            <strong>재난 예방 우선순위 보고서</strong>
-            <span>점검 순위와 예방 조치</span>
-          </a>
-          <a class="nav-link" href="#heritage" data-page="heritage">
-            <strong>문화유산 인근 재해 위험도</strong>
-            <span>유산별 인근 화재 이력</span>
-          </a>
+          <a class="nav-link" href="risk-score.html" data-page="daily" data-route="page">위험 점수</a>
+          <a class="nav-link" href="priority-report.html" data-page="report" data-route="page">순위 보고서</a>
+          <a class="nav-link" href="heritage-risk.html" data-page="heritage" data-route="page">위험도</a>
         </nav>
       </div>
     </header>

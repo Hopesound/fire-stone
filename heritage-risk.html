@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fire Stone | 문화유산 인근 재해 위험도</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="route-page" data-page="heritage">
+    <header class="app-header">
+      <div class="header-main">
+        <p class="eyebrow">NASA FIRMS + Heritage Risk Analysis</p>
+        <h1>Fire Stone</h1>
+      </div>
+      <div class="header-dashboard">
+        <div class="header-metrics" aria-label="선택 기간 분석 요약">
+          <div><span id="metricDetections">0</span><small>활성 화재 픽셀</small></div>
+          <div><span id="metricRiskScore">0.0</span><small>가중 위험 점수</small></div>
+          <div><span id="metricAtRisk">0</span><small>위험 문화유산</small></div>
+          <div><span id="metricAlerts">0</span><small>알림 후보</small></div>
+        </div>
+        <nav class="app-nav" aria-label="분석 페이지">
+          <a class="nav-link" href="risk-score.html" data-page="daily" data-route="page">위험 점수</a>
+          <a class="nav-link" href="priority-report.html" data-page="report" data-route="page">순위 보고서</a>
+          <a class="nav-link is-active" href="heritage-risk.html" data-page="heritage" data-route="page">위험도</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <aside class="control-panel" aria-label="데이터와 위험도 조건">
+        <section class="panel-section">
+          <h2>데이터 조건</h2>
+          <label class="field"><span>분석 종료일</span><input id="endDate" type="date"></label>
+          <div class="field">
+            <span>누적 기간</span>
+            <div class="segmented" role="group" aria-label="누적 기간">
+              <button class="segment is-active" type="button" data-range="7">주</button>
+              <button class="segment" type="button" data-range="30">월</button>
+              <button class="segment" type="button" data-range="365">년</button>
+            </div>
+          </div>
+          <label class="field">
+            <span>FIRMS 센서</span>
+            <select id="sourceSelect">
+              <option value="VIIRS_SNPP_NRT">VIIRS S-NPP NRT</option>
+              <option value="VIIRS_NOAA20_NRT">VIIRS NOAA-20 NRT</option>
+              <option value="VIIRS_NOAA21_NRT">VIIRS NOAA-21 NRT</option>
+              <option value="MODIS_NRT">MODIS NRT</option>
+            </select>
+          </label>
+          <label class="field"><span>최소 신뢰도 <strong id="confidenceValue">70</strong></span><input id="confidenceRange" type="range" min="0" max="100" step="5" value="70"></label>
+          <label class="field"><span>분석 반경 <strong id="radiusValue">10 km</strong></span><input id="radiusRange" type="range" min="2" max="30" step="1" value="10"></label>
+        </section>
+        <section class="panel-section">
+          <h2>위험도 기준</h2>
+          <div class="threshold-grid">
+            <label class="field"><span>주의 기준</span><input id="mediumThreshold" type="number" min="0" step="1" value="10"></label>
+            <label class="field"><span>높음 기준</span><input id="highThreshold" type="number" min="1" step="1" value="50"></label>
+          </div>
+        </section>
+        <section class="panel-section">
+          <h2>문화유산 유형</h2>
+          <label class="check-row"><input type="checkbox" value="temple" checked><span class="legend-dot temple"></span><span>사찰</span></label>
+          <label class="check-row"><input type="checkbox" value="heritage" checked><span class="legend-dot heritage"></span><span>문화유산</span></label>
+          <label class="check-row"><input type="checkbox" value="house" checked><span class="legend-dot house"></span><span>고택·마을</span></label>
+        </section>
+        <section class="panel-section">
+          <h2>실데이터 연결</h2>
+          <label class="field"><span>FIRMS MAP_KEY</span><input id="mapKey" type="password" autocomplete="off" placeholder="샘플 검토 후 입력"></label>
+          <div class="action-row">
+            <button id="loadSample" class="icon-button" type="button" title="샘플 데이터로 보기" aria-label="샘플 데이터로 보기"><span aria-hidden="true">S</span></button>
+            <button id="loadFirms" class="primary-button" type="button">FIRMS 불러오기</button>
+          </div>
+          <p id="dataStatus" class="status-text" role="status">샘플 데이터가 표시됩니다.</p>
+        </section>
+      </aside>
+
+      <section id="page-heritage" class="page-view heritage-band is-active" data-page="heritage" aria-label="문화유산 인근 재해 위험도">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Heritage risk management</p>
+            <h2>문화유산 인근 재해 위험도</h2>
+          </div>
+          <div class="risk-filter" role="group" aria-label="위험도 필터">
+            <button class="risk-chip is-active" type="button" data-risk="all">전체</button>
+            <button class="risk-chip" type="button" data-risk="high">높음</button>
+            <button class="risk-chip" type="button" data-risk="medium">주의</button>
+            <button class="risk-chip" type="button" data-risk="low">낮음</button>
+          </div>
+        </div>
+        <div class="management-grid">
+          <div id="heritageList" class="heritage-list"></div>
+          <article class="detail-panel" aria-live="polite">
+            <div id="detailEmpty" class="empty-state">목록에서 문화유산을 선택하세요.</div>
+            <div id="detailContent" class="detail-content is-hidden">
+              <div class="detail-topline">
+                <div>
+                  <p id="detailRegion" class="eyebrow"></p>
+                  <h3 id="detailName"></h3>
+                </div>
+                <span id="detailRisk" class="risk-badge"></span>
+              </div>
+              <div class="detail-stats">
+                <div><span id="detailScore">0.0</span><small>위험 점수</small></div>
+                <div><span id="detailCount">0</span><small>반경 내 픽셀</small></div>
+                <div><span id="detailFrp">0.0</span><small>FRP 합계</small></div>
+                <div><span id="detailDistance">-</span><small>최단 거리</small></div>
+              </div>
+              <label class="field">
+                <span>관리 상태</span>
+                <select id="managementStatus">
+                  <option value="확인 필요">확인 필요</option>
+                  <option value="현장 점검 중">현장 점검 중</option>
+                  <option value="조치 완료">조치 완료</option>
+                  <option value="모니터링">모니터링</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>관리 메모</span>
+                <textarea id="managementNote" rows="4" placeholder="점검 내용, 조치 사항, 다음 확인일을 기록"></textarea>
+              </label>
+              <button id="saveManagement" class="primary-button" type="button">저장</button>
+              <div>
+                <h4>기간 내 위험 이력</h4>
+                <div id="historyTimeline" class="timeline"></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

@@ -5,7 +5,7 @@
 ## 포함 기능
 
 - 문화유산 위치 지도 표시, 일반지도/항공사진 전환
-- 해시 기반 다중 페이지 구성: 일별 감지·누적·위험 점수, 재난 예방 우선순위 보고서, 문화유산 인근 재해 위험도
+- 실제 HTML 다중 페이지 구성: `risk-score.html`, `priority-report.html`, `heritage-risk.html`
 - NASA FIRMS Area API 호환 CSV 수집 어댑터
 - `heritage/` 폴더의 Shapefile 문화유산 데이터를 지도 중심점으로 변환해 표시
 - MAP_KEY 없이 검토 가능한 샘플 FIRMS 픽셀 데이터
