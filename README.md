@@ -12,6 +12,7 @@
 - 거리 가중 FRP 기반 위험도 자동 산출
 - 문화유산별 인근 화재 픽셀 이력, 관리 상태, 메모, CSV 내보내기
 - 주의/높음 등급 문화유산 알림 후보 목록
+- 위험 점수, 좌표, 최단거리, FRP, 예방 조치를 포함한 의사결정 보고서
 
 ## 구조
 
@@ -26,6 +27,7 @@ src/data/sample-firms.js       # FIRMS 형태 샘플 데이터 생성
 src/services/firms-api.js      # NASA FIRMS Area API 수집/CSV 파서
 src/services/storage.js        # 관리 상태 로컬 저장
 src/analysis/risk-engine.js    # 반경 검색, 거리 가중치, 위험 점수, 알림 후보
+src/analysis/prevention-report.js # 예방 우선순위 보고서와 조치 권고
 src/main.js                    # 지도/대시보드 UI 조립
 ```
 
@@ -45,6 +47,18 @@ risk_score = sum(weight * FRP)
 - 낮음: `risk_score < 10`
 
 임계값은 화면 좌측 `위험도 기준`에서 조정할 수 있습니다.
+
+## 보고서 산출 항목
+
+화면의 `재난 예방 우선순위 보고서`는 각 문화유산별로 다음 항목을 산출합니다.
+
+- 문화유산명, 지정구분, 지역, 위도/경도
+- 위험 등급, 위험 점수, 예방 우선순위
+- 반경 내 FIRMS 픽셀 수, FRP 합계/최대값
+- 문화유산과 가장 가까운 FIRMS 픽셀의 좌표, 관측일시, 신뢰도
+- 즉시점검/강화모니터링/정상관리 권고와 예방 조치
+
+보고서는 CSV 또는 JSON으로 내려받을 수 있습니다.
 
 ## 문화유산 데이터 갱신
 

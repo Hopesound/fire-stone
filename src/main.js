@@ -11,6 +11,7 @@ import {
   buildHotspotAreas,
   filterDetections
 } from "./analysis/risk-engine.js";
+import { buildPreventionReport, summarizeReport } from "./analysis/prevention-report.js";
 
 const LIST_LIMIT = 250;
 const RADIUS_LAYER_LIMIT = 80;
@@ -61,6 +62,11 @@ function collectElements() {
     metricAlerts: document.getElementById("metricAlerts"),
     dailyChart: document.getElementById("dailyChart"),
     alertList: document.getElementById("alertList"),
+    reportSummary: document.getElementById("reportSummary"),
+    reportTable: document.getElementById("reportTable"),
+    reportDetail: document.getElementById("reportDetail"),
+    exportReportCsv: document.getElementById("exportReportCsv"),
+    exportReportJson: document.getElementById("exportReportJson"),
     heritageList: document.getElementById("heritageList"),
     exportCsv: document.getElementById("exportCsv"),
     detailEmpty: document.getElementById("detailEmpty"),
@@ -234,6 +240,14 @@ function bindEvents({ state, elements, mapState }) {
     exportCurrentCsv({ state, elements });
   });
 
+  elements.exportReportCsv.addEventListener("click", () => {
+    exportPreventionReport({ state, elements, format: "csv" });
+  });
+
+  elements.exportReportJson.addEventListener("click", () => {
+    exportPreventionReport({ state, elements, format: "json" });
+  });
+
   elements.saveManagement.addEventListener("click", () => {
     if (!state.selectedSiteId) {
       return;
@@ -290,11 +304,17 @@ function renderAll({ state, elements, mapState }) {
   const hotspots = buildHotspotAreas(filteredDetections);
   const alerts = buildAlertCandidates(summaries);
   const daily = aggregateDaily(dateKeys, filteredDetections, summaries);
+  const report = buildPreventionReport(summaries, {
+    radiusKm: state.radiusKm,
+    mediumThreshold: state.mediumThreshold,
+    highThreshold: state.highThreshold
+  });
 
   renderMap({ state, elements, mapState, sites: filteredSites, detections: filteredDetections, summaries, hotspots });
   renderMetrics({ elements, detections: filteredDetections, summaries, alerts });
   renderDailyChart(elements.dailyChart, daily);
   renderAlerts({ state, elements, mapState, alerts, summaries });
+  renderPreventionReport({ state, elements, mapState, report, summaries });
   renderHeritageList({ state, elements, summaries, mapState });
   renderSelectedDetail({ state, elements, summaries });
 }
@@ -489,6 +509,122 @@ function renderAlerts({ state, elements, mapState, alerts, summaries }) {
   });
 }
 
+function renderPreventionReport({ state, elements, mapState, report, summaries }) {
+  const reportSummary = summarizeReport(report);
+  const actionable = report.filter((item) => item.risk !== "low" || item.priority !== "정상관리");
+  const visible = (actionable.length ? actionable : report).slice(0, 40);
+  const selected = report.find((item) => item.id === state.selectedSiteId) || visible[0] || report[0];
+
+  elements.reportSummary.innerHTML = `
+    <div>
+      <span>${reportSummary.high.toLocaleString("ko-KR")}</span>
+      <small>높음 등급</small>
+    </div>
+    <div>
+      <span>${reportSummary.medium.toLocaleString("ko-KR")}</span>
+      <small>주의 등급</small>
+    </div>
+    <div>
+      <span>${reportSummary.immediate.toLocaleString("ko-KR")}</span>
+      <small>즉시점검</small>
+    </div>
+    <div>
+      <span>${reportSummary.topScore.toFixed(1)}</span>
+      <small>최고 위험 점수</small>
+    </div>
+  `;
+
+  elements.reportTable.innerHTML = visible
+    .map((item, index) => {
+      const selectedClass = item.id === selected?.id ? " is-selected" : "";
+      const closest = item.closestKm === null ? "-" : `${item.closestKm.toFixed(1)} km`;
+      return `
+        <tr class="report-row${selectedClass}" data-site-id="${item.id}">
+          <td>${index + 1}</td>
+          <td>
+            <strong>${item.name}</strong>
+            <small>${item.region || "-"} · ${item.designation || "-"}</small>
+          </td>
+          <td>
+            <span>${item.latitude.toFixed(5)}</span>
+            <small>${item.longitude.toFixed(5)}</small>
+          </td>
+          <td><span class="risk-badge ${item.risk}">${item.riskLabel}</span></td>
+          <td>${item.riskScore.toFixed(1)}</td>
+          <td>${closest}</td>
+          <td>${item.frpSum.toFixed(1)} MW</td>
+          <td><span class="priority-badge ${priorityClass(item.priority)}">${item.priority}</span></td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  elements.reportTable.querySelectorAll(".report-row").forEach((row) => {
+    row.addEventListener("click", () => {
+      const summary = summaries.find((item) => item.site.id === row.dataset.siteId);
+      state.selectedSiteId = row.dataset.siteId;
+      if (summary) {
+        renderSelectedDetail({ state, elements, summaries });
+        mapState.map.setView([summary.site.lat, summary.site.lng], Math.max(mapState.map.getZoom(), 10), {
+          animate: true
+        });
+      }
+      renderReportDetail(elements.reportDetail, report.find((item) => item.id === row.dataset.siteId));
+      elements.reportTable.querySelectorAll(".report-row").forEach((item) => item.classList.remove("is-selected"));
+      row.classList.add("is-selected");
+    });
+  });
+
+  renderReportDetail(elements.reportDetail, selected);
+}
+
+function renderReportDetail(container, item) {
+  if (!item) {
+    container.innerHTML = `<div class="empty-alert">보고서 대상이 없습니다.</div>`;
+    return;
+  }
+
+  const closest = item.closestKm === null ? "반경 내 탐지 없음" : `${item.closestKm.toFixed(2)} km`;
+  const nearestLocation =
+    item.nearestFireLat === ""
+      ? "-"
+      : `${Number(item.nearestFireLat).toFixed(5)}, ${Number(item.nearestFireLng).toFixed(5)}`;
+
+  container.innerHTML = `
+    <div class="report-detail-head">
+      <div>
+        <p class="eyebrow">${item.region || "-"}</p>
+        <h3>${item.name}</h3>
+      </div>
+      <span class="priority-badge ${priorityClass(item.priority)}">${item.priority}</span>
+    </div>
+    <div class="report-kv">
+      <div><span>문화유산 좌표</span><strong>${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}</strong></div>
+      <div><span>위험 등급/점수</span><strong>${item.riskLabel} · ${item.riskScore.toFixed(1)}</strong></div>
+      <div><span>반경 내 픽셀</span><strong>${item.nearbyPixels}개</strong></div>
+      <div><span>FRP 합계/최대</span><strong>${item.frpSum.toFixed(1)} / ${item.maxFrp.toFixed(1)} MW</strong></div>
+      <div><span>최단 거리</span><strong>${closest}</strong></div>
+      <div><span>최근/최단 탐지 위치</span><strong>${nearestLocation}</strong></div>
+    </div>
+    <div class="prevention-box ${item.actionLevel}">
+      <h4>${item.actionTitle}</h4>
+      <ul>
+        ${item.actionItems.map((action) => `<li>${action}</li>`).join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function priorityClass(priority) {
+  if (priority === "즉시점검") {
+    return "urgent";
+  }
+  if (priority === "강화모니터링") {
+    return "watch";
+  }
+  return "normal";
+}
+
 function renderHeritageList({ state, elements, summaries, mapState }) {
   const filtered = summaries
     .filter((summary) => state.riskFilter === "all" || summary.risk === state.riskFilter)
@@ -648,6 +784,82 @@ function exportCurrentCsv({ state, elements }) {
   const link = document.createElement("a");
   link.href = url;
   link.download = `fire-stone-risk-${toDateInput(new Date())}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPreventionReport({ state, elements, format }) {
+  const report = buildCurrentReport({ state, elements });
+  const rows = report.map((item, index) => ({
+    rank: index + 1,
+    heritage_id: item.id,
+    heritage_code: item.heritageCode,
+    heritage_name: item.name,
+    designation: item.designation,
+    region: item.region,
+    latitude: item.latitude,
+    longitude: item.longitude,
+    risk_label: item.riskLabel,
+    risk_score: Number(item.riskScore.toFixed(2)),
+    priority: item.priority,
+    nearby_pixels: item.nearbyPixels,
+    frp_sum_mw: Number(item.frpSum.toFixed(2)),
+    max_frp_mw: Number(item.maxFrp.toFixed(2)),
+    closest_km: item.closestKm === null ? "" : Number(item.closestKm.toFixed(2)),
+    nearest_fire_date: item.nearestFireDate,
+    nearest_fire_time: item.nearestFireTime,
+    nearest_fire_latitude: item.nearestFireLat,
+    nearest_fire_longitude: item.nearestFireLng,
+    nearest_fire_frp_mw: item.nearestFireFrp,
+    nearest_fire_confidence: item.nearestFireConfidence,
+    action_level: item.actionLevel,
+    action_title: item.actionTitle,
+    action_items: item.actionItems.join(" | ")
+  }));
+
+  if (format === "json") {
+    downloadBlob(
+      JSON.stringify(rows, null, 2),
+      `fire-stone-prevention-report-${toDateInput(new Date())}.json`,
+      "application/json;charset=utf-8"
+    );
+    return;
+  }
+
+  const headers = Object.keys(rows[0] || { empty: "" });
+  const csv = [headers, ...rows.map((row) => headers.map((header) => row[header]))]
+    .map((row) => row.map(csvEscape).join(","))
+    .join("\n");
+  downloadBlob(`\ufeff${csv}`, `fire-stone-prevention-report-${toDateInput(new Date())}.csv`, "text/csv;charset=utf-8");
+}
+
+function buildCurrentReport({ state, elements }) {
+  const dateKeys = getDateKeys(dateFromInput(elements), state.rangeDays);
+  const detections = filterDetections(state.detections, {
+    dateKeys,
+    minConfidence: state.minConfidence,
+    source: state.source
+  });
+  const sites = heritageSites.filter((site) => state.categoryFilter.has(site.type));
+  const summaries = analyzeHeritageRisk(sites, detections, {
+    radiusKm: state.radiusKm,
+    mediumThreshold: state.mediumThreshold,
+    highThreshold: state.highThreshold,
+    getStoredRecord: getManagementRecord
+  });
+  return buildPreventionReport(summaries, {
+    radiusKm: state.radiusKm,
+    mediumThreshold: state.mediumThreshold,
+    highThreshold: state.highThreshold
+  });
+}
+
+function downloadBlob(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }

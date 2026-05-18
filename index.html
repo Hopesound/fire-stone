@@ -146,10 +146,10 @@
             <p class="eyebrow">Daily cumulative view</p>
             <h2>일별 감지·누적·위험 점수</h2>
           </div>
-          <button id="exportCsv" class="secondary-button" type="button">CSV 내보내기</button>
+          <button id="exportCsv" class="secondary-button" type="button">전체 CSV</button>
         </div>
         <div class="analytics-grid">
-          <div id="dailyChart" class="daily-chart" aria-label="일별 감지 수와 누적 수 차트"></div>
+          <div id="dailyChart" class="daily-chart" aria-label="일별 감지 수와 누적 위험 점수 차트"></div>
           <aside class="alerts-panel" aria-label="위험 알림 후보">
             <div class="panel-title-row">
               <h3>알림 후보</h3>
@@ -160,7 +160,41 @@
         </div>
       </section>
 
-      <section class="heritage-band" aria-label="문화유산별 화재 이력 관리">
+      <section class="report-band" aria-label="정량 위험 보고서">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Decision report</p>
+            <h2>재난 예방 우선순위 보고서</h2>
+          </div>
+          <div class="report-actions">
+            <button id="exportReportCsv" class="secondary-button" type="button">보고서 CSV</button>
+            <button id="exportReportJson" class="secondary-button" type="button">보고서 JSON</button>
+          </div>
+        </div>
+        <div id="reportSummary" class="report-summary"></div>
+        <div class="report-grid">
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>순위</th>
+                  <th>문화유산</th>
+                  <th>좌표</th>
+                  <th>위험</th>
+                  <th>점수</th>
+                  <th>최단거리</th>
+                  <th>FRP</th>
+                  <th>예방 판단</th>
+                </tr>
+              </thead>
+              <tbody id="reportTable"></tbody>
+            </table>
+          </div>
+          <aside id="reportDetail" class="report-detail"></aside>
+        </div>
+      </section>
+
+      <section class="heritage-band" aria-label="문화유산별 재해 위험도 관리">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Heritage risk management</p>

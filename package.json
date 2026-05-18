@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build:heritage": "node tools/convert-heritage.mjs",
-    "check": "node --check app.js && node --check src/main.js && node --check src/analysis/risk-engine.js && node --check src/services/firms-api.js && node --check src/data/sample-firms.js && node --check src/data/heritage-sites.generated.js && node --check tools/convert-heritage.mjs && node --check tools/serve.mjs",
+    "check": "node --check app.js && node --check src/main.js && node --check src/analysis/risk-engine.js && node --check src/analysis/prevention-report.js && node --check src/services/firms-api.js && node --check src/data/sample-firms.js && node --check src/data/heritage-sites.generated.js && node --check tools/convert-heritage.mjs && node --check tools/serve.mjs",
     "serve": "node tools/serve.mjs 5173"
   }
 }
