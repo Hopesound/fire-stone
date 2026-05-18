@@ -44,7 +44,7 @@ button {
   min-height: 88px;
   padding: 18px 28px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
   background: #1f2522;
@@ -82,20 +82,29 @@ button {
   display: grid;
   gap: 10px;
   min-width: 260px;
+  padding-top: 4px;
+}
+
+.header-dashboard {
+  display: grid;
+  flex: 1;
+  gap: 10px;
+  min-width: min(720px, 60vw);
+  max-width: 860px;
 }
 
 .app-nav {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  max-width: 680px;
+  width: 100%;
 }
 
 .nav-link {
-  min-height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 58px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
   padding: 8px 12px;
   border: 1px solid rgba(255, 250, 241, 0.24);
   border-radius: 8px;
@@ -103,8 +112,19 @@ button {
   font-size: 0.82rem;
   font-weight: 850;
   line-height: 1.2;
-  text-align: center;
+  text-align: left;
   text-decoration: none;
+}
+
+.nav-link strong,
+.nav-link span {
+  display: block;
+}
+
+.nav-link span {
+  color: rgba(255, 250, 241, 0.62);
+  font-size: 0.72rem;
+  font-weight: 750;
 }
 
 .nav-link.is-active {
@@ -119,11 +139,18 @@ button {
   color: #fffaf1;
 }
 
+.nav-link:hover span,
+.nav-link:focus-visible span,
+.nav-link.is-active span {
+  color: rgba(255, 250, 241, 0.82);
+}
+
 .header-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(90px, 1fr));
   gap: 10px;
-  min-width: min(680px, 58vw);
+  width: 100%;
+  min-width: 0;
 }
 
 .header-metrics div {
@@ -965,8 +992,10 @@ button {
   }
 
   .header-main,
+  .header-dashboard,
   .app-nav {
     width: 100%;
+    min-width: 0;
     max-width: none;
   }
 

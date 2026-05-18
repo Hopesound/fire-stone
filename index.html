@@ -14,29 +14,40 @@
       <div class="header-main">
         <p class="eyebrow">NASA FIRMS + Heritage Risk Analysis</p>
         <h1>Fire Stone</h1>
-        <nav class="app-nav" aria-label="분석 페이지">
-          <a class="nav-link is-active" href="#daily" data-page="daily">일별 감지·누적·위험 점수</a>
-          <a class="nav-link" href="#report" data-page="report">재난 예방 우선순위 보고서</a>
-          <a class="nav-link" href="#heritage" data-page="heritage">문화유산 인근 재해 위험도</a>
-        </nav>
       </div>
-      <div class="header-metrics" aria-label="선택 기간 분석 요약">
-        <div>
-          <span id="metricDetections">0</span>
-          <small>활성 화재 픽셀</small>
+      <div class="header-dashboard">
+        <div class="header-metrics" aria-label="선택 기간 분석 요약">
+          <div>
+            <span id="metricDetections">0</span>
+            <small>활성 화재 픽셀</small>
+          </div>
+          <div>
+            <span id="metricRiskScore">0.0</span>
+            <small>가중 위험 점수</small>
+          </div>
+          <div>
+            <span id="metricAtRisk">0</span>
+            <small>위험 문화유산</small>
+          </div>
+          <div>
+            <span id="metricAlerts">0</span>
+            <small>알림 후보</small>
+          </div>
         </div>
-        <div>
-          <span id="metricRiskScore">0.0</span>
-          <small>가중 위험 점수</small>
-        </div>
-        <div>
-          <span id="metricAtRisk">0</span>
-          <small>위험 문화유산</small>
-        </div>
-        <div>
-          <span id="metricAlerts">0</span>
-          <small>알림 후보</small>
-        </div>
+        <nav class="app-nav" aria-label="분석 페이지">
+          <a class="nav-link is-active" href="#daily" data-page="daily">
+            <strong>일별 감지·누적 위험 점수</strong>
+            <span>기간별 감지 수와 누적 점수</span>
+          </a>
+          <a class="nav-link" href="#report" data-page="report">
+            <strong>재난 예방 우선순위 보고서</strong>
+            <span>점검 순위와 예방 조치</span>
+          </a>
+          <a class="nav-link" href="#heritage" data-page="heritage">
+            <strong>문화유산 인근 재해 위험도</strong>
+            <span>유산별 인근 화재 이력</span>
+          </a>
+        </nav>
       </div>
     </header>
 

@@ -166,8 +166,9 @@ function initPageNavigation(mapState) {
     return PAGE_IDS.has(page) ? page : "daily";
   }
 
-  function setPage(page) {
+  function setPage(page, options = {}) {
     const activePage = PAGE_IDS.has(page) ? page : "daily";
+    const activePageElement = pages.find((pageElement) => pageElement.dataset.page === activePage);
     links.forEach((link) => {
       link.classList.toggle("is-active", link.dataset.page === activePage);
       link.setAttribute("aria-current", link.dataset.page === activePage ? "page" : "false");
@@ -177,6 +178,9 @@ function initPageNavigation(mapState) {
     });
     requestAnimationFrame(() => {
       mapState.map.invalidateSize();
+      if (options.scrollToPage && activePageElement) {
+        activePageElement.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
   }
 
@@ -188,9 +192,10 @@ function initPageNavigation(mapState) {
         return;
       }
       if (window.location.hash === `#${nextPage}`) {
-        setPage(nextPage);
+        setPage(nextPage, { scrollToPage: true });
       } else {
         window.location.hash = nextPage;
+        setPage(nextPage, { scrollToPage: true });
       }
     });
   });
