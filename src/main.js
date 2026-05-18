@@ -12,6 +12,9 @@ import {
   filterDetections
 } from "./analysis/risk-engine.js";
 
+const LIST_LIMIT = 250;
+const RADIUS_LAYER_LIMIT = 80;
+
 export function createFireStoneApp() {
   const state = {
     rangeDays: DEFAULTS.rangeDays,
@@ -32,6 +35,8 @@ export function createFireStoneApp() {
 
   elements.endDate.value = toDateInput(new Date());
   state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
+  elements.dataStatus.textContent = `heritage 폴더 데이터 ${heritageSites.length.toLocaleString("ko-KR")}건을 분석 대상으로 불러왔습니다.`;
+
   bindEvents({ state, elements, mapState });
   renderAll({ state, elements, mapState });
 }
@@ -96,6 +101,7 @@ function initMap() {
       }
     )
   };
+
   let activeBaseLayer = baseLayers.street.addTo(map);
 
   L.control.layers(
@@ -216,7 +222,7 @@ function bindEvents({ state, elements, mapState }) {
   elements.loadSample.addEventListener("click", () => {
     state.usingLiveData = false;
     state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
-    elements.dataStatus.textContent = "샘플 데이터가 표시됩니다.";
+    elements.dataStatus.textContent = `샘플 FIRMS 데이터와 heritage 폴더 문화유산 ${heritageSites.length.toLocaleString("ko-KR")}건이 표시됩니다.`;
     renderAll({ state, elements, mapState });
   });
 
@@ -285,7 +291,7 @@ function renderAll({ state, elements, mapState }) {
   const alerts = buildAlertCandidates(summaries);
   const daily = aggregateDaily(dateKeys, filteredDetections, summaries);
 
-  renderMap({ state, mapState, sites: filteredSites, detections: filteredDetections, summaries, hotspots });
+  renderMap({ state, elements, mapState, sites: filteredSites, detections: filteredDetections, summaries, hotspots });
   renderMetrics({ elements, detections: filteredDetections, summaries, alerts });
   renderDailyChart(elements.dailyChart, daily);
   renderAlerts({ state, elements, mapState, alerts, summaries });
@@ -293,12 +299,13 @@ function renderAll({ state, elements, mapState }) {
   renderSelectedDetail({ state, elements, summaries });
 }
 
-function renderMap({ state, mapState, sites, detections, summaries, hotspots }) {
+function renderMap({ state, elements, mapState, sites, detections, summaries, hotspots }) {
   const { map, layers } = mapState;
   layers.heritage.clearLayers();
   layers.detection.clearLayers();
   layers.area.clearLayers();
   layers.radius.clearLayers();
+  const summaryById = new Map(summaries.map((summary) => [summary.site.id, summary]));
 
   hotspots.forEach((hotspot) => {
     L.circle([hotspot.lat, hotspot.lng], {
@@ -336,45 +343,53 @@ function renderMap({ state, mapState, sites, detections, summaries, hotspots }) 
       .addTo(layers.detection);
   });
 
-  sites.forEach((site) => {
-    const summary = summaries.find((item) => item.site.id === site.id);
-    L.circle([site.lat, site.lng], {
-      radius: state.radiusKm * 1000,
-      color: "#31755b",
-      weight: 1,
-      opacity: 0.4,
-      fillColor: "#31755b",
-      fillOpacity: 0.05
-    }).addTo(layers.radius);
+  summaries
+    .filter((summary) => summary.risk !== "low" || summary.site.id === state.selectedSiteId)
+    .sort((a, b) => b.riskScore - a.riskScore)
+    .slice(0, RADIUS_LAYER_LIMIT)
+    .forEach((summary) => {
+      const color = summary.risk === "high" ? "#c94a35" : summary.risk === "medium" ? "#d79226" : "#31755b";
+      L.circle([summary.site.lat, summary.site.lng], {
+        radius: state.radiusKm * 1000,
+        color,
+        weight: 1,
+        opacity: 0.38,
+        fillColor: color,
+        fillOpacity: 0.04
+      }).addTo(layers.radius);
+    });
 
-    const marker = L.marker([site.lat, site.lng], {
-      icon: createHeritageIcon(site, summary)
-    })
+  sites.forEach((site) => {
+    const summary = summaryById.get(site.id);
+    const marker = L.circleMarker([site.lat, site.lng], heritagePointStyle(site, summary))
       .bindPopup(
         `<h3 class="popup-title">${site.name}</h3>
-         <p class="popup-line">${TYPE_LABELS[site.type]} · ${site.region}</p>
+         <p class="popup-line">${TYPE_LABELS[site.type]} · ${site.region || "-"}</p>
+         <p class="popup-line">${site.designation || site.sourceLayer || "문화유산"} · ${site.isProtectionZone ? "보호구역" : "유산"}</p>
          <p class="popup-line">위험 점수 ${summary ? summary.riskScore.toFixed(1) : "0.0"}</p>`
       )
       .addTo(layers.heritage);
 
     marker.on("click", () => {
       state.selectedSiteId = site.id;
-      renderSelectedDetail({ state, elements: collectElements(), summaries });
+      renderSelectedDetail({ state, elements, summaries });
       map.setView([site.lat, site.lng], Math.max(map.getZoom(), 10), { animate: true });
     });
   });
 }
 
-function createHeritageIcon(site, summary) {
-  const letter = site.type === "temple" ? "寺" : site.type === "house" ? "古" : "文";
-  const riskClass = summary ? summary.risk : "low";
-  return L.divIcon({
-    className: "",
-    html: `<div class="heritage-marker ${site.type} risk-${riskClass}">${letter}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-    popupAnchor: [0, -14]
-  });
+function heritagePointStyle(site, summary) {
+  const risk = summary ? summary.risk : "low";
+  const typeColor = site.type === "temple" ? "#31755b" : site.type === "house" ? "#157983" : "#5f5aa2";
+  const riskColor = risk === "high" ? "#c94a35" : risk === "medium" ? "#d79226" : typeColor;
+  return {
+    radius: risk === "high" ? 6 : risk === "medium" ? 5 : 3,
+    color: "#ffffff",
+    weight: risk === "low" ? 0.5 : 1.5,
+    opacity: 0.95,
+    fillColor: riskColor,
+    fillOpacity: site.isProtectionZone ? 0.38 : 0.74
+  };
 }
 
 function renderMetrics({ elements, detections, summaries, alerts }) {
@@ -487,28 +502,36 @@ function renderHeritageList({ state, elements, summaries, mapState }) {
     return;
   }
 
-  elements.heritageList.innerHTML = filtered
-    .map((summary) => {
-      const site = summary.site;
-      const selectedClass = state.selectedSiteId === site.id ? " is-selected" : "";
-      return `
-        <button class="heritage-card${selectedClass}" type="button" data-site-id="${site.id}">
-          <span class="heritage-card-top">
-            <span>
-              <strong>${site.name}</strong>
-              <small>${TYPE_LABELS[site.type]} · ${site.region} · ${site.manager}</small>
+  const visible = filtered.slice(0, LIST_LIMIT);
+  const notice =
+    filtered.length > LIST_LIMIT
+      ? `<div class="list-notice">총 ${filtered.length.toLocaleString("ko-KR")}건 중 위험도 상위 ${LIST_LIMIT.toLocaleString("ko-KR")}건을 표시합니다.</div>`
+      : "";
+
+  elements.heritageList.innerHTML =
+    notice +
+    visible
+      .map((summary) => {
+        const site = summary.site;
+        const selectedClass = state.selectedSiteId === site.id ? " is-selected" : "";
+        return `
+          <button class="heritage-card${selectedClass}" type="button" data-site-id="${site.id}">
+            <span class="heritage-card-top">
+              <span>
+                <strong>${site.name}</strong>
+                <small>${TYPE_LABELS[site.type]} · ${site.region || "-"} · ${site.designation || site.sourceLayer || "문화유산"}</small>
+              </span>
+              <span class="risk-badge ${summary.risk}">${RISK_LABELS[summary.risk]}</span>
             </span>
-            <span class="risk-badge ${summary.risk}">${RISK_LABELS[summary.risk]}</span>
-          </span>
-          <span class="heritage-card-meta">
-            <span class="meta-pill">점수 ${summary.riskScore.toFixed(1)}</span>
-            <span class="meta-pill">FRP ${summary.frpSum.toFixed(1)} MW</span>
-            <span class="meta-pill">${summary.status}</span>
-          </span>
-        </button>
-      `;
-    })
-    .join("");
+            <span class="heritage-card-meta">
+              <span class="meta-pill">점수 ${summary.riskScore.toFixed(1)}</span>
+              <span class="meta-pill">FRP ${summary.frpSum.toFixed(1)} MW</span>
+              <span class="meta-pill">${site.isProtectionZone ? "보호구역" : "유산"}</span>
+            </span>
+          </button>
+        `;
+      })
+      .join("");
 
   elements.heritageList.querySelectorAll(".heritage-card").forEach((card) => {
     card.addEventListener("click", () => {
@@ -539,7 +562,7 @@ function renderSelectedDetail({ state, elements, summaries }) {
   state.selectedSiteId = summary.site.id;
   elements.detailEmpty.classList.add("is-hidden");
   elements.detailContent.classList.remove("is-hidden");
-  elements.detailRegion.textContent = `${TYPE_LABELS[summary.site.type]} · ${summary.site.region} · 등재 ${summary.site.inscriptionYear || "-"}`;
+  elements.detailRegion.textContent = `${TYPE_LABELS[summary.site.type]} · ${summary.site.region || "-"} · ${summary.site.designation || summary.site.sourceLayer || "문화유산"} · 면적 ${Number(summary.site.areaM2 || 0).toLocaleString("ko-KR")}㎡`;
   elements.detailName.textContent = summary.site.name;
   elements.detailRisk.textContent = RISK_LABELS[summary.risk];
   elements.detailRisk.className = `risk-badge ${summary.risk}`;
@@ -584,7 +607,10 @@ function exportCurrentCsv({ state, elements }) {
   const rows = [
     [
       "heritage_id",
+      "heritage_code",
       "heritage_name",
+      "source_layer",
+      "designation",
       "type",
       "region",
       "risk",
@@ -600,7 +626,10 @@ function exportCurrentCsv({ state, elements }) {
   summaries.forEach((summary) => {
     rows.push([
       summary.site.id,
+      summary.site.heritageCode || "",
       summary.site.name,
+      summary.site.sourceLayer || "",
+      summary.site.designation || "",
       TYPE_LABELS[summary.site.type],
       summary.site.region,
       RISK_LABELS[summary.risk],

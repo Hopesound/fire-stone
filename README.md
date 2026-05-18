@@ -6,6 +6,7 @@
 
 - 문화유산 위치 지도 표시, 일반지도/항공사진 전환
 - NASA FIRMS Area API 호환 CSV 수집 어댑터
+- `heritage/` 폴더의 Shapefile 문화유산 데이터를 지도 중심점으로 변환해 표시
 - MAP_KEY 없이 검토 가능한 샘플 FIRMS 픽셀 데이터
 - 1주/2주 일별 감지 수, 누적 위험 점수 차트
 - 거리 가중 FRP 기반 위험도 자동 산출
@@ -17,7 +18,10 @@
 ```text
 app.js                         # 브라우저 진입점
 src/config.js                  # 분석 기본값과 라벨
-src/data/heritage-sites.js     # 문화유산 위치 샘플 데이터
+heritage/                      # 국가/시도 지정·등록 유산 및 보호구역 Shapefile
+tools/convert-heritage.mjs     # Shapefile -> WGS84 중심점 데이터 변환
+src/data/heritage-sites.js     # 생성 데이터 로딩과 샘플 fallback
+src/data/heritage-sites.generated.js # heritage 폴더에서 생성된 문화유산 위치 데이터
 src/data/sample-firms.js       # FIRMS 형태 샘플 데이터 생성
 src/services/firms-api.js      # NASA FIRMS Area API 수집/CSV 파서
 src/services/storage.js        # 관리 상태 로컬 저장
@@ -41,6 +45,16 @@ risk_score = sum(weight * FRP)
 - 낮음: `risk_score < 10`
 
 임계값은 화면 좌측 `위험도 기준`에서 조정할 수 있습니다.
+
+## 문화유산 데이터 갱신
+
+`heritage/` 폴더 안의 `.shp/.dbf/.shx/.prj` 세트를 갱신한 뒤 아래 명령을 실행하면 지도와 위험도 분석 대상이 갱신됩니다.
+
+```powershell
+npm run build:heritage
+```
+
+현재 변환기는 `KGD2002_Unified_Coordinate_System` 좌표를 WGS84 위도/경도로 변환하고, 각 폴리곤의 중심점을 지도 표시와 반경 분석에 사용합니다.
 
 ## 실행
 
@@ -84,8 +98,8 @@ Official references:
 
 ## 다음 구현 단계
 
-1. `src/data/heritage-sites.js`를 국가유산청/UNESCO 공식 데이터로 교체합니다.
-2. 브라우저 CORS나 키 보호가 필요하면 FastAPI 프록시를 추가합니다.
-3. 관리 상태와 분석 결과를 PostgreSQL + PostGIS에 저장합니다.
-4. `src/analysis/risk-engine.js`의 임계값을 과거 데이터로 보정합니다.
+1. 브라우저 CORS나 FIRMS 키 보호가 필요하면 FastAPI 프록시를 추가합니다.
+2. 관리 상태와 분석 결과를 PostgreSQL + PostGIS에 저장합니다.
+3. `src/analysis/risk-engine.js`의 임계값을 과거 데이터로 보정합니다.
+4. 보호구역 폴리곤 자체를 지도에 그리는 상세 레이어를 추가합니다.
 5. 알림 후보를 이메일/SMS/모바일 푸시로 연결합니다.

@@ -1,5 +1,17 @@
-import { heritageSites } from "./heritage-sites.js";
 import { toDateInput, addDays } from "../utils/date.js";
+
+const referenceSites = {
+  bulguksa: { lat: 35.7901, lng: 129.3321 },
+  haeinsa: { lat: 35.8019, lng: 128.0982 },
+  hahoemaeul: { lat: 36.5394, lng: 128.5187 },
+  yangdong: { lat: 36.0038, lng: 129.2538 },
+  jongmyo: { lat: 37.5747, lng: 126.9941 },
+  songgwangsa: { lat: 35.0026, lng: 127.2762 },
+  buseoksa: { lat: 36.9988, lng: 128.6876 },
+  magoksa: { lat: 36.5583, lng: 127.0135 },
+  nagan: { lat: 34.9044, lng: 127.3427 },
+  yunjeung: { lat: 36.2014, lng: 127.0892 }
+};
 
 const templates = [
   ["haeinsa", -1, 0.012, -0.016, 88, 18.5, 341.7, "N"],
@@ -27,7 +39,7 @@ const templates = [
 export function buildSampleDetections({ endDate, source }) {
   return templates.map((template, index) => {
     const [siteId, dayOffset, a, b, confidence, frp, brightnessKelvin, daynight] = template;
-    const site = heritageSites.find((item) => item.id === siteId);
+    const site = referenceSites[siteId];
     const date = addDays(endDate, dayOffset);
     const lat = site ? site.lat + a : a;
     const lng = site ? site.lng + b : b;

@@ -498,6 +498,16 @@ button {
   overflow-y: auto;
 }
 
+.list-notice {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf1;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
 .heritage-card,
 .detail-panel {
   border: 1px solid var(--line);
