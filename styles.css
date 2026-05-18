@@ -6,10 +6,10 @@
   --muted: #677069;
   --line: #ded8cc;
   --green: #31755b;
-  --teal: #157983;
   --red: #c94a35;
   --amber: #d79226;
   --violet: #5f5aa2;
+  --blue: #1f6fb2;
   --shadow: 0 14px 36px rgba(45, 36, 25, 0.12);
   font-family: Inter, "Segoe UI", "Noto Sans KR", Arial, sans-serif;
 }
@@ -207,7 +207,7 @@ button {
 
 .segmented {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -259,7 +259,7 @@ button {
 }
 
 .legend-dot.house {
-  background: var(--teal);
+  background: var(--blue);
 }
 
 .action-row {
@@ -925,7 +925,7 @@ button {
 }
 
 .heritage-marker.house {
-  background: var(--teal);
+  background: var(--blue);
 }
 
 .heritage-marker.risk-high {

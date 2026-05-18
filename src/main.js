@@ -37,7 +37,7 @@ export function createFireStoneApp() {
 
   elements.endDate.value = toDateInput(new Date());
   state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
-  elements.dataStatus.textContent = `heritage 폴더 데이터 ${heritageSites.length.toLocaleString("ko-KR")}건을 분석 대상으로 불러왔습니다.`;
+  elements.dataStatus.textContent = `heritage 폴더 데이터 ${heritageSites.length.toLocaleString("ko-KR")}건을 분석 대상으로 불러왔습니다. 주·월·년 단위 누적 분석을 선택할 수 있습니다.`;
 
   bindEvents({ state, elements, mapState });
   initPageNavigation(mapState);
@@ -210,6 +210,8 @@ function bindEvents({ state, elements, mapState }) {
       state.rangeDays = Number(button.dataset.range);
       if (!state.usingLiveData) {
         state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
+      } else {
+        elements.dataStatus.textContent = `누적 기간을 ${formatRangeLabel(state.rangeDays)}로 변경했습니다. 라이브 데이터는 FIRMS 불러오기로 다시 조회하세요.`;
       }
       renderAll({ state, elements, mapState });
     });
@@ -275,7 +277,7 @@ function bindEvents({ state, elements, mapState }) {
   elements.loadSample.addEventListener("click", () => {
     state.usingLiveData = false;
     state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
-    elements.dataStatus.textContent = `샘플 FIRMS 데이터와 heritage 폴더 문화유산 ${heritageSites.length.toLocaleString("ko-KR")}건이 표시됩니다.`;
+    elements.dataStatus.textContent = `샘플 FIRMS 데이터와 heritage 폴더 문화유산 ${heritageSites.length.toLocaleString("ko-KR")}건이 ${formatRangeLabel(state.rangeDays)} 기준으로 표시됩니다.`;
     renderAll({ state, elements, mapState });
   });
 
@@ -312,7 +314,10 @@ async function loadLiveFirms({ state, elements, mapState }) {
     return;
   }
 
-  elements.dataStatus.textContent = "FIRMS 데이터를 불러오는 중입니다.";
+  elements.dataStatus.textContent =
+    state.rangeDays >= 365
+      ? "연 단위 FIRMS 데이터를 10일 단위 요청으로 나누어 불러오는 중입니다."
+      : "FIRMS 데이터를 불러오는 중입니다.";
   elements.loadFirms.disabled = true;
 
   try {
@@ -325,7 +330,7 @@ async function loadLiveFirms({ state, elements, mapState }) {
     });
     state.usingLiveData = true;
     state.detections = detections;
-    elements.dataStatus.textContent = `${detections.length.toLocaleString("ko-KR")}개 FIRMS 픽셀을 불러왔습니다.`;
+    elements.dataStatus.textContent = `${formatRangeLabel(state.rangeDays)} 기준 ${detections.length.toLocaleString("ko-KR")}개 FIRMS 픽셀을 불러왔습니다.`;
     renderAll({ state, elements, mapState });
   } catch (error) {
     elements.dataStatus.textContent = `FIRMS 불러오기 실패: ${error.message}`;
@@ -447,7 +452,7 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
 
 function heritagePointStyle(site, summary) {
   const risk = summary ? summary.risk : "low";
-  const typeColor = site.type === "temple" ? "#31755b" : site.type === "house" ? "#157983" : "#5f5aa2";
+  const typeColor = site.type === "temple" ? "#31755b" : site.type === "house" ? "#1f6fb2" : "#5f5aa2";
   const riskColor = risk === "high" ? "#c94a35" : risk === "medium" ? "#d79226" : typeColor;
   return {
     radius: risk === "high" ? 6 : risk === "medium" ? 5 : 3,
@@ -913,6 +918,16 @@ function downloadBlob(content, filename, type) {
 
 function dateFromInput(elements) {
   return parseDate(elements.endDate.value || toDateInput(new Date()));
+}
+
+function formatRangeLabel(rangeDays) {
+  if (rangeDays >= 365) {
+    return "연 단위";
+  }
+  if (rangeDays >= 30) {
+    return "월 단위";
+  }
+  return "주 단위";
 }
 
 function csvEscape(value) {

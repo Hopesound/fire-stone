@@ -9,7 +9,7 @@
 - NASA FIRMS Area API 호환 CSV 수집 어댑터
 - `heritage/` 폴더의 Shapefile 문화유산 데이터를 지도 중심점으로 변환해 표시
 - MAP_KEY 없이 검토 가능한 샘플 FIRMS 픽셀 데이터
-- 1주/2주 일별 감지 수, 누적 위험 점수 차트
+- 주/월/년 단위 일별 감지 수, 누적 위험 점수 차트
 - 거리 가중 FRP 기반 위험도 자동 산출
 - 문화유산별 인근 화재 픽셀 이력, 관리 상태, 메모, CSV 내보내기
 - 주의/높음 등급 문화유산 알림 후보 목록
@@ -101,7 +101,7 @@ https://firms.modaps.eosdis.nasa.gov/api/area/csv/[MAP_KEY]/[SOURCE]/[AREA_COORD
 
 현재 초안에 반영한 제약:
 
-- `DAY_RANGE`는 1~10일 요청을 기준으로 하므로 14일 조회는 여러 요청으로 분할합니다.
+- `DAY_RANGE`는 1~10일 요청을 기준으로 하므로 월/년 단위 조회는 여러 요청으로 분할합니다.
 - `AREA_COORDINATES`는 `west,south,east,north` 순서입니다.
 - `DATE`는 조회 시작일이며 `YYYY-MM-DD` 형식입니다.
 - 실시간 데이터 조회에는 FIRMS `MAP_KEY`가 필요합니다.
