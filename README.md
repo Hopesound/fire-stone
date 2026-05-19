@@ -128,6 +128,8 @@ https://firms.modaps.eosdis.nasa.gov/api/area/csv/[MAP_KEY]/[SOURCE]/[AREA_COORD
 3. 배포된 Worker URL을 화면의 `FIRMS 프록시 URL`에 입력합니다.
 4. `FIRMS 불러오기`를 누릅니다.
 
+`FIRMS 프록시 URL`에 `https://hopesound.github.io/fire-stone/` 같은 GitHub Pages 주소를 넣으면 안 됩니다. 이 주소는 정적 HTML 페이지라서 FIRMS 요청을 처리하지 못하고 404 HTML을 반환합니다. 입력해야 하는 값은 `https://...workers.dev/`처럼 실제 프록시 코드가 배포된 API 주소입니다.
+
 프록시 URL은 한 번 입력하면 브라우저 `localStorage`에 저장됩니다. 로컬에서 테스트할 때는 `npm run serve`로 실행하면 `http://127.0.0.1:5173/api/firms/area` 프록시가 자동으로 사용됩니다.
 
 Official references:

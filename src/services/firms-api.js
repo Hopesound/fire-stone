@@ -31,10 +31,16 @@ async function requestFirmsCsv(request) {
         headers: { Accept: "text/csv" }
       });
       if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
         const message = await response.text();
         if (attempt.isLocalProxy && response.status === 404) {
           lastError = new Error("로컬 FIRMS 프록시를 찾을 수 없습니다.");
           continue;
+        }
+        if (attempt.isProxy && isHtmlErrorResponse(contentType, message)) {
+          throw new Error(
+            "프록시 URL이 HTML 페이지를 반환했습니다. GitHub Pages 주소가 아니라 Cloudflare Worker/Vercel/FastAPI API 주소를 입력하세요."
+          );
         }
         throw new Error(formatHttpError(attempt.label, response.status, message));
       }
@@ -108,6 +114,10 @@ function shouldUseLocalProxy() {
 
 function isFetchBlocked(error) {
   return error instanceof TypeError || /failed to fetch/i.test(error.message || "");
+}
+
+function isHtmlErrorResponse(contentType, body) {
+  return /text\/html/i.test(contentType) || /^\s*<!doctype html/i.test(body) || /^\s*<html/i.test(body);
 }
 
 function formatHttpError(label, status, message) {

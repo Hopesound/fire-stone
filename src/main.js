@@ -358,6 +358,11 @@ async function loadLiveFirms({ state, elements, mapState }) {
       "GitHub Pages에서는 NASA FIRMS 직접 호출이 브라우저에서 차단됩니다. FIRMS 프록시 URL을 입력하거나 로컬 서버(npm run serve)에서 실행하세요.";
     return;
   }
+  if (proxyUrl && isStaticHostingUrl(proxyUrl)) {
+    elements.dataStatus.textContent =
+      "FIRMS 프록시 URL에는 GitHub Pages 주소가 아니라 Cloudflare Worker, Vercel Function, FastAPI 같은 API 프록시 주소를 입력하세요.";
+    return;
+  }
   if (elements.proxyUrl) {
     elements.proxyUrl.value = proxyUrl;
     saveProxyUrl(proxyUrl);
@@ -410,6 +415,15 @@ function requiresHostedProxy() {
     return false;
   }
   return !["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
+function isStaticHostingUrl(value) {
+  try {
+    const { hostname } = new URL(value);
+    return hostname.endsWith(".github.io") || hostname === "github.io";
+  } catch {
+    return false;
+  }
 }
 
 function loadProxyUrl() {
