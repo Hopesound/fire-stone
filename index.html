@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://tile.openstreetmap.org">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=steep-slope-map-v7">
+    <link rel="stylesheet" href="styles.css?v=vworld-risk-v8">
   </head>
   <body class="dashboard-page" data-page="map">
     <header class="app-header">
@@ -136,12 +136,21 @@
             <span>FIRMS 프록시 URL</span>
             <input id="proxyUrl" type="url" autocomplete="off" placeholder="https://...workers.dev/">
           </label>
+          <label class="field">
+            <span>V-World 인증키</span>
+            <input id="vworldKey" type="password" autocomplete="off" placeholder="V-World API 인증키">
+          </label>
+          <label class="field">
+            <span>V-World 도메인</span>
+            <input id="vworldDomain" type="url" autocomplete="off" placeholder="https://hopesound.github.io/fire-stone">
+          </label>
           <div class="action-row">
             <button id="loadSample" class="icon-button" type="button" title="샘플 데이터로 보기" aria-label="샘플 데이터로 보기">
               <span aria-hidden="true">S</span>
             </button>
             <button id="loadFirms" class="primary-button" type="button">FIRMS 불러오기</button>
           </div>
+          <button id="loadVworld" class="secondary-button full-button" type="button">V-World 산불예측 불러오기</button>
           <p id="dataStatus" class="status-text" role="status">샘플 데이터가 표시됩니다.</p>
         </section>
       </aside>
@@ -168,6 +177,10 @@
           <div class="overlay-item">
             <span class="swatch steep-slope"></span>
             <span>급경사지 추정 위치</span>
+          </div>
+          <div class="overlay-item">
+            <span class="swatch vworld"></span>
+            <span>V-World 산불예측</span>
           </div>
         </div>
       </section>
@@ -299,7 +312,7 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module" src="app.js?v=steep-slope-map-v7"></script>
+    <script type="module" src="app.js?v=vworld-risk-v8"></script>
   </body>
 </html>
 

@@ -12,10 +12,13 @@ export function filterDetections(detections, { dateKeys, minConfidence, source }
 }
 
 export function analyzeHeritageRisk(sites, detections, options) {
-  const { radiusKm, mediumThreshold, highThreshold, getStoredRecord, environmentFactors } = options;
+  const { radiusKm, mediumThreshold, highThreshold, getStoredRecord, environmentFactors, vworldRisks } = options;
 
   return sites.map((site) => {
     const environment = buildEnvironmentRisk(site, environmentFactors);
+    const vworld = vworldRisks?.get(site.id) || null;
+    const vworldMultiplier = vworld?.multiplier || 1;
+    const vworldBaseScore = vworld?.baseScore || 0;
     const nearby = detections
       .map((detection) => {
         const distance = distanceKm(site.lat, site.lng, detection.lat, detection.lng);
@@ -31,7 +34,7 @@ export function analyzeHeritageRisk(sites, detections, options) {
       .sort((a, b) => b.acqDate.localeCompare(a.acqDate) || b.weightedFrp - a.weightedFrp);
 
     const fireRiskScore = nearby.reduce((sum, detection) => sum + detection.weightedFrp, 0);
-    const riskScore = fireRiskScore * environment.multiplier + environment.baseScore;
+    const riskScore = fireRiskScore * environment.multiplier * vworldMultiplier + environment.baseScore + vworldBaseScore;
     const frpSum = nearby.reduce((sum, detection) => sum + detection.frp, 0);
     const closest = nearby.length ? Math.min(...nearby.map((detection) => detection.distanceKm)) : null;
     const maxFrp = nearby.length ? Math.max(...nearby.map((detection) => detection.frp)) : 0;
@@ -50,6 +53,7 @@ export function analyzeHeritageRisk(sites, detections, options) {
       riskScore,
       fireRiskScore,
       environment,
+      vworld,
       frpSum,
       avgFrp,
       maxFrp,

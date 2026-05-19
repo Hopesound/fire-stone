@@ -151,3 +151,13 @@ Official references:
 3. `src/analysis/risk-engine.js`의 임계값을 과거 데이터로 보정합니다.
 4. 보호구역 폴리곤 자체를 지도에 그리는 상세 레이어를 추가합니다.
 5. 알림 후보를 이메일/SMS/모바일 푸시로 연결합니다.
+## V-World 산불위험예측 연동
+
+V-World 디지털트윈국토의 산불위험예측지도 데이터셋 `LT_C_KFDRSSIGUGRADE`를 좌표 기반으로 조회할 수 있습니다.
+
+- 화면의 `V-World 인증키`에는 V-World에서 발급받은 API 인증키를 입력합니다.
+- `V-World 도메인`에는 인증키에 등록한 서비스 URL을 입력합니다. GitHub Pages 배포본은 `https://hopesound.github.io/fire-stone` 값을 사용합니다.
+- 앱은 `geomfilter=POINT(경도 위도)`, `attrfilter=ymd:like:YYYYMMDD`, `data=LT_C_KFDRSSIGUGRADE`로 현재 문화유산 좌표의 시간대별 산불위험 값을 조회합니다.
+- 조회 결과는 지도에 별도 점으로 표시되고, 위험점수·순위보고서·CSV/JSON 내보내기에 `vworld_*` 컬럼으로 반영됩니다.
+
+정적 GitHub Pages에서 직접 호출하므로 V-World 인증키의 도메인 등록값과 화면의 `V-World 도메인` 값이 맞아야 합니다. 로컬 테스트용 키는 `http://127.0.0.1:5173` 또는 `http://localhost:5173` 도메인을 별도로 등록해야 합니다.

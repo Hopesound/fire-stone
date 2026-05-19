@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Fire Stone | 문화유산 인근 재해 위험도</title>
-    <link rel="stylesheet" href="styles.css?v=steep-slope-map-v7">
+    <link rel="stylesheet" href="styles.css?v=vworld-risk-v8">
   </head>
   <body class="route-page" data-page="heritage">
     <header class="app-header">
@@ -76,10 +76,13 @@
           <h2>실데이터 연결</h2>
           <label class="field"><span>FIRMS MAP_KEY</span><input id="mapKey" type="password" autocomplete="off" placeholder="샘플 검토 후 입력"></label>
           <label class="field"><span>FIRMS 프록시 URL</span><input id="proxyUrl" type="url" autocomplete="off" placeholder="https://...workers.dev/"></label>
+          <label class="field"><span>V-World 인증키</span><input id="vworldKey" type="password" autocomplete="off" placeholder="V-World API 인증키"></label>
+          <label class="field"><span>V-World 도메인</span><input id="vworldDomain" type="url" autocomplete="off" placeholder="https://hopesound.github.io/fire-stone"></label>
           <div class="action-row">
             <button id="loadSample" class="icon-button" type="button" title="샘플 데이터로 보기" aria-label="샘플 데이터로 보기"><span aria-hidden="true">S</span></button>
             <button id="loadFirms" class="primary-button" type="button">FIRMS 불러오기</button>
           </div>
+          <button id="loadVworld" class="secondary-button full-button" type="button">V-World 산불예측 불러오기</button>
           <p id="dataStatus" class="status-text" role="status">샘플 데이터가 표시됩니다.</p>
         </section>
       </aside>
@@ -140,7 +143,7 @@
       </section>
     </main>
 
-    <script type="module" src="app.js?v=steep-slope-map-v7"></script>
+    <script type="module" src="app.js?v=vworld-risk-v8"></script>
   </body>
 </html>
 

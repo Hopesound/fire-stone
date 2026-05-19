@@ -42,6 +42,12 @@ export function buildPreventionReport(summaries, options) {
         coniferTrendPct: summary.environment.evidence?.conifer?.trendPct || 0,
         slopeDataCity: summary.environment.evidence?.slope?.city || "",
         slopeDataCount: summary.environment.evidence?.slope?.count || 0,
+        vworldLabel: summary.vworld?.label || "",
+        vworldMaxClass: summary.vworld?.maxClass || "",
+        vworldMaxValue: summary.vworld?.maxValue || "",
+        vworldPeakHour: summary.vworld?.peakHour || "",
+        vworldBaseScore: summary.vworld?.baseScore || 0,
+        vworldMultiplier: summary.vworld?.multiplier || 1,
         priority,
         priorityScore,
         nearbyPixels: summary.nearby.length,
@@ -81,7 +87,8 @@ function buildPriorityScore(summary, highThreshold) {
   const densityFactor = Math.min(20, summary.nearby.length * 3);
   const powerFactor = Math.min(20, summary.maxFrp / 2);
   const environmentFactor = Math.min(15, summary.environment?.priorityBoost || 0);
-  return Math.round((scoreFactor + nearestFactor + densityFactor + powerFactor + environmentFactor) * 10) / 10;
+  const vworldFactor = Math.min(18, (summary.vworld?.maxClass || 0) * 3 + (summary.vworld?.maxValue || 0) * 0.03);
+  return Math.round((scoreFactor + nearestFactor + densityFactor + powerFactor + environmentFactor + vworldFactor) * 10) / 10;
 }
 
 function classifyPriority(risk, priorityScore) {

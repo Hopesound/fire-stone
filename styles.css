@@ -334,6 +334,11 @@ button {
   gap: 9px;
 }
 
+.full-button {
+  width: 100%;
+  margin-top: 9px;
+}
+
 .threshold-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -378,6 +383,15 @@ button {
   margin-top: 3px;
   color: #6f6658;
   font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.vworld-source {
+  display: block;
+  margin-top: 3px;
+  color: #9a3d27;
+  font-size: 0.78rem;
+  font-weight: 800;
   line-height: 1.35;
 }
 
@@ -472,6 +486,11 @@ button {
 .swatch.steep-slope {
   background: #8b5a2b;
   border: 1px solid #5f4428;
+}
+
+.swatch.vworld {
+  background: #d79226;
+  border: 1px solid #9a3d27;
 }
 
 .analytics-band,

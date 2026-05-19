@@ -3,6 +3,7 @@ import { heritageSites } from "./data/heritage-sites.js";
 import { steepSlopeSites } from "./data/steep-slope-sites.generated.js";
 import { buildSampleDetections } from "./data/sample-firms.js";
 import { fetchFirmsArea } from "./services/firms-api.js";
+import { fetchVworldFireRisk, getDefaultVworldDomain } from "./services/vworld-api.js";
 import { getManagementRecord, saveManagementRecord } from "./services/storage.js";
 import { formatAcqTime, getDateKeys, parseDate, toDateInput } from "./utils/date.js";
 import {
@@ -18,6 +19,9 @@ const LIST_LIMIT = 250;
 const RADIUS_LAYER_LIMIT = 80;
 const PAGE_IDS = new Set(["map", "daily", "report", "heritage"]);
 const FIRMS_PROXY_STORAGE_KEY = "fire-stone-firms-proxy-url";
+const VWORLD_KEY_STORAGE_KEY = "fire-stone-vworld-api-key";
+const VWORLD_DOMAIN_STORAGE_KEY = "fire-stone-vworld-domain";
+const VWORLD_QUERY_LIMIT = 80;
 
 export function createFireStoneApp() {
   const state = {
@@ -35,6 +39,8 @@ export function createFireStoneApp() {
     riskFilter: "all",
     selectedSiteId: null,
     detections: [],
+    vworldRisks: new Map(),
+    vworldRiskDate: "",
     usingLiveData: false
   };
 
@@ -44,6 +50,12 @@ export function createFireStoneApp() {
   elements.endDate.value = toDateInput(new Date());
   if (elements.proxyUrl) {
     elements.proxyUrl.value = loadProxyUrl();
+  }
+  if (elements.vworldKey) {
+    elements.vworldKey.value = loadVworldKey();
+  }
+  if (elements.vworldDomain) {
+    elements.vworldDomain.value = loadVworldDomain();
   }
   state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
   elements.dataStatus.textContent = `heritage 폴더 데이터 ${heritageSites.length.toLocaleString("ko-KR")}건을 분석 대상으로 불러왔습니다. 주·월·년 단위 누적 분석을 선택할 수 있습니다.`;
@@ -65,6 +77,9 @@ function collectElements() {
     highThreshold: document.getElementById("highThreshold"),
     mapKey: document.getElementById("mapKey"),
     proxyUrl: document.getElementById("proxyUrl"),
+    vworldKey: document.getElementById("vworldKey"),
+    vworldDomain: document.getElementById("vworldDomain"),
+    loadVworld: document.getElementById("loadVworld"),
     loadSample: document.getElementById("loadSample"),
     loadFirms: document.getElementById("loadFirms"),
     dataStatus: document.getElementById("dataStatus"),
@@ -141,6 +156,7 @@ function initMap() {
     detection: L.layerGroup().addTo(map),
     area: L.layerGroup().addTo(map),
     steepSlope: L.layerGroup().addTo(map),
+    vworld: L.layerGroup().addTo(map),
     radius: L.layerGroup().addTo(map)
   };
 
@@ -256,6 +272,11 @@ function bindEvents({ state, elements, mapState }) {
     if (!state.usingLiveData) {
       state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
     }
+    if (state.vworldRisks.size) {
+      state.vworldRisks.clear();
+      state.vworldRiskDate = "";
+      elements.dataStatus.textContent = "분석 종료일이 바뀌어 V-World 산불예측값을 초기화했습니다. 다시 불러오세요.";
+    }
     renderAll({ state, elements, mapState });
   });
 
@@ -293,6 +314,16 @@ function bindEvents({ state, elements, mapState }) {
     saveProxyUrl(elements.proxyUrl.value);
   });
 
+  elements.vworldKey?.addEventListener("change", () => {
+    saveVworldKey(elements.vworldKey.value);
+  });
+
+  elements.vworldDomain?.addEventListener("change", () => {
+    const domain = elements.vworldDomain.value.trim().replace(/\/$/, "");
+    elements.vworldDomain.value = domain || getDefaultVworldDomain();
+    saveVworldDomain(elements.vworldDomain.value);
+  });
+
   document.querySelectorAll(".check-row input").forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
       if (checkbox.value === "conifer" || checkbox.value === "slope") {
@@ -324,6 +355,10 @@ function bindEvents({ state, elements, mapState }) {
 
   elements.loadFirms.addEventListener("click", async () => {
     await loadLiveFirms({ state, elements, mapState });
+  });
+
+  elements.loadVworld?.addEventListener("click", async () => {
+    await loadVworldRisks({ state, elements, mapState });
   });
 
   elements.exportCsv?.addEventListener("click", () => {
@@ -396,6 +431,105 @@ async function loadLiveFirms({ state, elements, mapState }) {
   }
 }
 
+async function loadVworldRisks({ state, elements, mapState }) {
+  const apiKey = elements.vworldKey?.value.trim() || "";
+  const domain = (elements.vworldDomain?.value.trim() || getDefaultVworldDomain()).replace(/\/$/, "");
+  if (!apiKey) {
+    elements.dataStatus.textContent = "V-World 인증키를 입력하세요.";
+    return;
+  }
+
+  if (elements.vworldKey) {
+    saveVworldKey(apiKey);
+  }
+  if (elements.vworldDomain) {
+    elements.vworldDomain.value = domain;
+    saveVworldDomain(domain);
+  }
+
+  const date = dateFromInput(elements);
+  const candidates = buildVworldCandidates({ state, elements });
+  if (!candidates.length) {
+    elements.dataStatus.textContent = "V-World 산불예측을 조회할 문화유산이 없습니다.";
+    return;
+  }
+
+  state.vworldRisks = new Map();
+  state.vworldRiskDate = toDateInput(date);
+  elements.loadVworld.disabled = true;
+  elements.dataStatus.textContent = `V-World 산불위험예측 ${candidates.length.toLocaleString("ko-KR")}건을 조회하는 중입니다.`;
+
+  let completed = 0;
+  let failed = 0;
+  const failures = [];
+  await runConcurrent(candidates, 4, async (site) => {
+    try {
+      const risk = await fetchVworldFireRisk({ apiKey, domain, site, date });
+      state.vworldRisks.set(site.id, risk);
+    } catch (error) {
+      failed += 1;
+      if (failures.length < 3) {
+        failures.push(`${site.name}: ${error.message}`);
+      }
+    } finally {
+      completed += 1;
+      if (completed === candidates.length || completed % 10 === 0) {
+        elements.dataStatus.textContent = `V-World 산불위험예측 조회 ${completed}/${candidates.length}건 완료`;
+      }
+    }
+  });
+
+  const success = state.vworldRisks.size;
+  elements.dataStatus.textContent =
+    success > 0
+      ? `V-World 산불위험예측 ${success.toLocaleString("ko-KR")}건을 반영했습니다.${failed ? ` 실패 ${failed.toLocaleString("ko-KR")}건` : ""}`
+      : `V-World 산불위험예측 불러오기 실패: ${failures[0] || "인증키, 도메인, 날짜를 확인하세요."}`;
+  elements.loadVworld.disabled = false;
+  renderAll({ state, elements, mapState });
+}
+
+function buildVworldCandidates({ state, elements }) {
+  const dateKeys = getDateKeys(dateFromInput(elements), state.rangeDays);
+  const detections = filterDetections(state.detections, {
+    dateKeys,
+    minConfidence: state.minConfidence,
+    source: state.source
+  });
+  const sites = heritageSites.filter((site) => state.categoryFilter.has(site.type));
+  const summaries = analyzeHeritageRisk(sites, detections, {
+    radiusKm: state.radiusKm,
+    mediumThreshold: state.mediumThreshold,
+    highThreshold: state.highThreshold,
+    environmentFactors: state.environmentFactors,
+    vworldRisks: new Map(),
+    getStoredRecord: getManagementRecord
+  });
+  const selected = summaries.find((summary) => summary.site.id === state.selectedSiteId);
+  const ranked = summaries
+    .slice()
+    .sort((a, b) => {
+      const aScore = a.riskScore + a.environment.combinedScore * 0.2 + a.nearby.length * 2;
+      const bScore = b.riskScore + b.environment.combinedScore * 0.2 + b.nearby.length * 2;
+      return bScore - aScore;
+    })
+    .slice(0, VWORLD_QUERY_LIMIT);
+  const unique = new Map();
+  [selected, ...ranked].filter(Boolean).forEach((summary) => unique.set(summary.site.id, summary.site));
+  return Array.from(unique.values()).slice(0, VWORLD_QUERY_LIMIT);
+}
+
+async function runConcurrent(items, concurrency, worker) {
+  let index = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (index < items.length) {
+      const item = items[index];
+      index += 1;
+      await worker(item);
+    }
+  });
+  await Promise.all(runners);
+}
+
 function normalizeProxyUrl(value) {
   const url = value.trim();
   if (!url) {
@@ -449,6 +583,48 @@ function saveProxyUrl(value) {
   }
 }
 
+function loadVworldKey() {
+  try {
+    return window.localStorage.getItem(VWORLD_KEY_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveVworldKey(value) {
+  try {
+    const apiKey = String(value || "").trim();
+    if (apiKey) {
+      window.localStorage.setItem(VWORLD_KEY_STORAGE_KEY, apiKey);
+    } else {
+      window.localStorage.removeItem(VWORLD_KEY_STORAGE_KEY);
+    }
+  } catch {
+    // localStorage can be unavailable in strict browser privacy modes.
+  }
+}
+
+function loadVworldDomain() {
+  try {
+    return window.localStorage.getItem(VWORLD_DOMAIN_STORAGE_KEY) || getDefaultVworldDomain();
+  } catch {
+    return getDefaultVworldDomain();
+  }
+}
+
+function saveVworldDomain(value) {
+  try {
+    const domain = String(value || "").trim().replace(/\/$/, "");
+    if (domain) {
+      window.localStorage.setItem(VWORLD_DOMAIN_STORAGE_KEY, domain);
+    } else {
+      window.localStorage.removeItem(VWORLD_DOMAIN_STORAGE_KEY);
+    }
+  } catch {
+    // localStorage can be unavailable in strict browser privacy modes.
+  }
+}
+
 function renderAll({ state, elements, mapState }) {
   const filteredSites = heritageSites.filter((site) => state.categoryFilter.has(site.type));
   const dateKeys = getDateKeys(dateFromInput(elements), state.rangeDays);
@@ -462,6 +638,7 @@ function renderAll({ state, elements, mapState }) {
     mediumThreshold: state.mediumThreshold,
     highThreshold: state.highThreshold,
     environmentFactors: state.environmentFactors,
+    vworldRisks: state.vworldRisks,
     getStoredRecord: getManagementRecord
   });
   const hotspots = buildHotspotAreas(filteredDetections);
@@ -500,12 +677,14 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
   layers.detection.clearLayers();
   layers.area.clearLayers();
   layers.steepSlope.clearLayers();
+  layers.vworld.clearLayers();
   layers.radius.clearLayers();
   const summaryById = new Map(summaries.map((summary) => [summary.site.id, summary]));
 
   if (state.environmentFactors.slope) {
     renderSteepSlopeLayer(layers.steepSlope);
   }
+  renderVworldLayer(layers.vworld, summaries);
 
   hotspots.forEach((hotspot) => {
     L.circle([hotspot.lat, hotspot.lng], {
@@ -596,6 +775,46 @@ function renderSteepSlopeLayer(layer) {
       )
       .addTo(layer);
   });
+}
+
+function renderVworldLayer(layer, summaries) {
+  summaries
+    .filter((summary) => summary.vworld)
+    .forEach((summary) => {
+      const risk = summary.vworld;
+      const color = vworldColor(risk.maxClass);
+      L.circleMarker([summary.site.lat, summary.site.lng], {
+        radius: 8,
+        color: "#ffffff",
+        weight: 1.6,
+        opacity: 0.96,
+        fillColor: color,
+        fillOpacity: 0.8
+      })
+        .bindPopup(
+          `<h3 class="popup-title">V-World 산불위험예측</h3>
+           <p class="popup-line">${summary.site.name}</p>
+           <p class="popup-line">${risk.label} · 최고등급 ${risk.maxClass} · 최대값 ${risk.maxValue.toFixed(1)}</p>
+           <p class="popup-line">최고 시간 ${risk.peakHour || "-"}시 · 위험점수 보정 +${risk.baseScore.toFixed(1)}</p>`
+        )
+        .addTo(layer);
+    });
+}
+
+function vworldColor(value) {
+  if (value >= 5) {
+    return "#7f1d1d";
+  }
+  if (value >= 4) {
+    return "#c94a35";
+  }
+  if (value >= 3) {
+    return "#d79226";
+  }
+  if (value >= 2) {
+    return "#e3c15b";
+  }
+  return "#31755b";
 }
 
 function heritagePointStyle(site, summary) {
@@ -691,6 +910,7 @@ function renderAlerts({ state, elements, mapState, alerts, summaries }) {
           <small>점수 ${summary.riskScore.toFixed(1)} · ${summary.nearby.length}개 픽셀 · 최근 ${last ? last.acqDate : "-"}</small>
           <small>${summary.environment.label} · 침엽수 ${summary.environment.coniferScore} · 급경사 ${summary.environment.slopeScore}</small>
           ${summary.environment.evidenceSummary ? `<small class="environment-source">${summary.environment.evidenceSummary}</small>` : ""}
+          ${summary.vworld ? `<small class="vworld-source">${summary.vworld.label} · ${summary.vworld.peakHour || "-"}시 · +${summary.vworld.baseScore.toFixed(1)}</small>` : ""}
         </button>
       `;
     })
@@ -761,6 +981,7 @@ function renderPreventionReport({ state, elements, mapState, report, summaries }
             <span class="risk-badge ${item.environmentGrade}">${item.environmentLabel}</span>
             <small>침엽수 ${item.coniferScore} · 급경사 ${item.slopeScore}</small>
             ${item.environmentEvidence ? `<small class="environment-source">${item.environmentEvidence}</small>` : ""}
+            ${item.vworldLabel ? `<small class="vworld-source">${item.vworldLabel} · ${item.vworldPeakHour || "-"}시 · +${item.vworldBaseScore.toFixed(1)}</small>` : ""}
           </td>
           <td>${closest}</td>
           <td>${item.frpSum.toFixed(1)} MW</td>
@@ -819,6 +1040,7 @@ function renderReportDetail(container, item) {
       <div><span>침엽수/급경사 리스크</span><strong>${item.environmentLabel} · ${item.coniferScore} / ${item.slopeScore}</strong></div>
       <div><span>환경 가중</span><strong>배수 ${item.environmentMultiplier.toFixed(2)} · 기초점수 ${item.environmentBaseScore.toFixed(1)}</strong></div>
       <div><span>환경 원자료</span><strong>${item.environmentEvidence || "지역 추정치"}</strong></div>
+      <div><span>V-World 산불예측</span><strong>${item.vworldLabel ? `${item.vworldLabel} · 등급 ${item.vworldMaxClass} · +${item.vworldBaseScore.toFixed(1)}` : "미조회"}</strong></div>
       <div><span>반경 내 픽셀</span><strong>${item.nearbyPixels}개</strong></div>
       <div><span>FRP 합계/최대</span><strong>${item.frpSum.toFixed(1)} / ${item.maxFrp.toFixed(1)} MW</strong></div>
       <div><span>최단 거리</span><strong>${closest}</strong></div>
@@ -880,6 +1102,7 @@ function renderHeritageList({ state, elements, summaries, mapState }) {
             <span class="heritage-card-meta">
               <span class="meta-pill">점수 ${summary.riskScore.toFixed(1)}</span>
               <span class="meta-pill">${summary.environment.label}</span>
+              ${summary.vworld ? `<span class="meta-pill">${summary.vworld.label}</span>` : ""}
               <span class="meta-pill">FRP ${summary.frpSum.toFixed(1)} MW</span>
               <span class="meta-pill">${site.isProtectionZone ? "보호구역" : "유산"}</span>
             </span>
@@ -928,8 +1151,12 @@ function renderSelectedDetail({ state, elements, summaries }) {
   elements.detailFrp.textContent = `${summary.frpSum.toFixed(1)} MW`;
   elements.detailDistance.textContent = summary.closest === null ? "-" : `${summary.closest.toFixed(1)} km`;
   if (elements.detailEnvironment) {
-    elements.detailEnvironment.textContent = `${summary.environment.label} ${summary.environment.combinedScore.toFixed(0)}`;
-    elements.detailEnvironment.title = summary.environment.evidenceSummary || "지역 추정치";
+    elements.detailEnvironment.textContent = summary.vworld
+      ? `${summary.environment.label} ${summary.environment.combinedScore.toFixed(0)} · V ${summary.vworld.maxClass}`
+      : `${summary.environment.label} ${summary.environment.combinedScore.toFixed(0)}`;
+    elements.detailEnvironment.title = [summary.environment.evidenceSummary || "지역 추정치", summary.vworld?.label || ""]
+      .filter(Boolean)
+      .join(" · ");
   }
   elements.managementStatus.value = summary.status;
   elements.managementNote.value = summary.note;
@@ -964,6 +1191,7 @@ function exportCurrentCsv({ state, elements }) {
     mediumThreshold: state.mediumThreshold,
     highThreshold: state.highThreshold,
     environmentFactors: state.environmentFactors,
+    vworldRisks: state.vworldRisks,
     getStoredRecord: getManagementRecord
   });
   const rows = [
@@ -991,6 +1219,11 @@ function exportCurrentCsv({ state, elements }) {
       "conifer_trend_pct",
       "slope_data_city",
       "slope_data_count",
+      "vworld_label",
+      "vworld_max_class",
+      "vworld_max_value",
+      "vworld_peak_hour",
+      "vworld_score_boost",
       "status"
     ]
   ];
@@ -1020,6 +1253,11 @@ function exportCurrentCsv({ state, elements }) {
       summary.environment.evidence?.conifer?.trendPct || "",
       summary.environment.evidence?.slope?.city || "",
       summary.environment.evidence?.slope?.count || "",
+      summary.vworld?.label || "",
+      summary.vworld?.maxClass || "",
+      summary.vworld?.maxValue || "",
+      summary.vworld?.peakHour || "",
+      summary.vworld?.baseScore || "",
       summary.status
     ]);
   });
@@ -1059,6 +1297,12 @@ function exportPreventionReport({ state, elements, format }) {
     conifer_trend_pct: item.coniferTrendPct,
     slope_data_city: item.slopeDataCity,
     slope_data_count: item.slopeDataCount,
+    vworld_label: item.vworldLabel,
+    vworld_max_class: item.vworldMaxClass,
+    vworld_max_value: item.vworldMaxValue,
+    vworld_peak_hour: item.vworldPeakHour,
+    vworld_score_boost: item.vworldBaseScore,
+    vworld_multiplier: item.vworldMultiplier,
     priority: item.priority,
     nearby_pixels: item.nearbyPixels,
     frp_sum_mw: Number(item.frpSum.toFixed(2)),
@@ -1104,6 +1348,7 @@ function buildCurrentReport({ state, elements }) {
     mediumThreshold: state.mediumThreshold,
     highThreshold: state.highThreshold,
     environmentFactors: state.environmentFactors,
+    vworldRisks: state.vworldRisks,
     getStoredRecord: getManagementRecord
   });
   return buildPreventionReport(summaries, {
