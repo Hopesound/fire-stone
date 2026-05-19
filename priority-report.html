@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Fire Stone | 재난 예방 우선순위 보고서</title>
-    <link rel="stylesheet" href="styles.css?v=steep-geocode-v10">
+    <link rel="stylesheet" href="styles.css?v=region-search-v11">
   </head>
   <body class="route-page" data-page="report">
     <header class="app-header">
@@ -52,6 +52,16 @@
           </label>
           <label class="field"><span>최소 신뢰도 <strong id="confidenceValue">70</strong></span><input id="confidenceRange" type="range" min="0" max="100" step="5" value="70"></label>
           <label class="field"><span>분석 반경 <strong id="radiusValue">10 km</strong></span><input id="radiusRange" type="range" min="2" max="30" step="1" value="10"></label>
+        </section>
+        <section class="panel-section">
+          <h2>지역별 검색</h2>
+          <label class="field">
+            <span>지역명</span>
+            <input id="regionSearch" type="search" list="regionOptions" autocomplete="off" placeholder="예: 충청남도 공주시, 공주, 금산군">
+            <datalist id="regionOptions"></datalist>
+          </label>
+          <button id="clearRegion" class="secondary-button full-button" type="button">전체 지역</button>
+          <p id="regionStatus" class="status-text" role="status">전체 지역 표시</p>
         </section>
         <section class="panel-section">
           <h2>위험도 기준</h2>
@@ -124,7 +134,7 @@
       </section>
     </main>
 
-    <script type="module" src="app.js?v=steep-geocode-v10"></script>
+    <script type="module" src="app.js?v=region-search-v11"></script>
   </body>
 </html>
 

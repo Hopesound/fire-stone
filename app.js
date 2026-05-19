@@ -1,3 +1,3 @@
-import { createFireStoneApp } from "./src/main.js?v=steep-geocode-v10";
+import { createFireStoneApp } from "./src/main.js?v=region-search-v11";
 
 createFireStoneApp();

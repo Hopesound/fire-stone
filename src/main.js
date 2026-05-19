@@ -12,6 +12,7 @@ import {
   analyzeHeritageRisk,
   buildAlertCandidates,
   buildHotspotAreas,
+  distanceKm,
   filterDetections
 } from "./analysis/risk-engine.js";
 import { buildPreventionReport, summarizeReport } from "./analysis/prevention-report.js";
@@ -39,6 +40,8 @@ export function createFireStoneApp() {
       slope: true
     },
     riskFilter: "all",
+    regionQuery: "",
+    lastRegionViewKey: "",
     selectedSiteId: null,
     detections: [],
     vworldRisks: new Map(),
@@ -60,6 +63,7 @@ export function createFireStoneApp() {
   if (elements.vworldDomain) {
     elements.vworldDomain.value = loadVworldDomain();
   }
+  populateRegionOptions(elements);
   state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
   elements.dataStatus.textContent = `heritage 폴더 데이터 ${heritageSites.length.toLocaleString("ko-KR")}건을 분석 대상으로 불러왔습니다. 주·월·년 단위 누적 분석을 선택할 수 있습니다.`;
 
@@ -84,6 +88,10 @@ function collectElements() {
     vworldDomain: document.getElementById("vworldDomain"),
     loadVworld: document.getElementById("loadVworld"),
     loadSteepGeocode: document.getElementById("loadSteepGeocode"),
+    regionSearch: document.getElementById("regionSearch"),
+    clearRegion: document.getElementById("clearRegion"),
+    regionStatus: document.getElementById("regionStatus"),
+    regionOptions: document.getElementById("regionOptions"),
     loadSample: document.getElementById("loadSample"),
     loadFirms: document.getElementById("loadFirms"),
     dataStatus: document.getElementById("dataStatus"),
@@ -328,6 +336,24 @@ function bindEvents({ state, elements, mapState }) {
     saveVworldDomain(elements.vworldDomain.value);
   });
 
+  elements.regionSearch?.addEventListener("input", () => {
+    state.regionQuery = elements.regionSearch.value.trim();
+    state.selectedSiteId = null;
+    state.lastRegionViewKey = "";
+    renderAll({ state, elements, mapState });
+  });
+
+  elements.clearRegion?.addEventListener("click", () => {
+    state.regionQuery = "";
+    state.selectedSiteId = null;
+    state.lastRegionViewKey = "";
+    if (elements.regionSearch) {
+      elements.regionSearch.value = "";
+      elements.regionSearch.focus();
+    }
+    renderAll({ state, elements, mapState });
+  });
+
   document.querySelectorAll(".check-row input").forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
       if (checkbox.value === "conifer" || checkbox.value === "slope") {
@@ -512,7 +538,7 @@ async function geocodeSteepSlopeSites({ state, elements, mapState }) {
     saveVworldDomain(domain);
   }
 
-  const targets = steepSlopeSites.filter((site) => !state.steepSlopeGeocodes.has(site.id));
+  const targets = filterSteepSlopeSites(state.regionQuery).filter((site) => !state.steepSlopeGeocodes.has(site.id));
   if (!targets.length) {
     elements.dataStatus.textContent = `급경사지 ${state.steepSlopeGeocodes.size.toLocaleString("ko-KR")}건이 이미 주소좌표로 보정되어 있습니다.`;
     renderAll({ state, elements, mapState });
@@ -563,7 +589,7 @@ function buildVworldCandidates({ state, elements }) {
     minConfidence: state.minConfidence,
     source: state.source
   });
-  const sites = heritageSites.filter((site) => state.categoryFilter.has(site.type));
+  const sites = getFilteredSites(state);
   const summaries = analyzeHeritageRisk(sites, detections, {
     radiusKm: state.radiusKm,
     mediumThreshold: state.mediumThreshold,
@@ -596,6 +622,109 @@ async function runConcurrent(items, concurrency, worker) {
     }
   });
   await Promise.all(runners);
+}
+
+function getFilteredSites(state) {
+  return heritageSites.filter((site) => {
+    return state.categoryFilter.has(site.type) && matchesSiteRegion(site, state.regionQuery);
+  });
+}
+
+function filterSteepSlopeSites(regionQuery) {
+  return steepSlopeSites.filter((site) => matchesSteepSlopeRegion(site, regionQuery));
+}
+
+function filterDetectionsForRegion(detections, sites, regionQuery, radiusKm) {
+  if (!normalizeSearchText(regionQuery)) {
+    return detections;
+  }
+  if (!sites.length) {
+    return [];
+  }
+  return detections.filter((detection) => {
+    return sites.some((site) => distanceKm(site.lat, site.lng, detection.lat, detection.lng) <= radiusKm);
+  });
+}
+
+function matchesSiteRegion(site, query) {
+  return textMatchesQuery([site.region, site.name, site.manager, site.designation, site.sourceLayer].join(" "), query);
+}
+
+function matchesSteepSlopeRegion(site, query) {
+  return textMatchesQuery([site.city, site.address, site.manager, site.department].join(" "), query);
+}
+
+function textMatchesQuery(text, query) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) {
+    return true;
+  }
+  const haystackVariants = buildSearchVariants(text);
+  const queryVariants = buildSearchVariants(normalizedQuery);
+  return queryVariants.some((needle) => needle && haystackVariants.some((haystack) => haystack.includes(needle)));
+}
+
+function buildSearchVariants(value) {
+  const normalized = normalizeSearchText(value);
+  const variants = new Set([normalized]);
+  variants.add(normalized.replace(/충청남도/g, "충남"));
+  variants.add(normalized.replace(/충남/g, "충청남도"));
+  variants.add(normalized.replace(/[시군구]/g, ""));
+  variants.add(normalized.replace(/충청남도/g, "충남").replace(/[시군구]/g, ""));
+  variants.add(normalized.replace(/^충청남도/, ""));
+  variants.add(normalized.replace(/^충남/, ""));
+  variants.add(normalized.replace(/^충청남도/, "").replace(/[시군구]/g, ""));
+  variants.add(normalized.replace(/^충남/, "").replace(/[시군구]/g, ""));
+  return Array.from(variants).filter(Boolean);
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .replace(/\u0000/g, "")
+    .replace(/\s+/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function populateRegionOptions(elements) {
+  if (!elements.regionOptions) {
+    return;
+  }
+  const regions = new Set();
+  heritageSites.forEach((site) => {
+    const region = cleanRegionText(site.region);
+    if (region) {
+      regions.add(region);
+      const parts = region.split(" ").filter(Boolean);
+      if (parts.length >= 2) {
+        regions.add(`${parts[0]} ${parts[1]}`);
+        regions.add(parts[1]);
+      }
+    }
+  });
+  steepSlopeSites.forEach((site) => {
+    if (site.city) {
+      regions.add(site.city);
+      regions.add(`충청남도 ${site.city}`);
+    }
+  });
+  elements.regionOptions.innerHTML = Array.from(regions)
+    .sort((a, b) => a.localeCompare(b, "ko-KR"))
+    .slice(0, 600)
+    .map((region) => `<option value="${escapeAttribute(region)}"></option>`)
+    .join("");
+}
+
+function cleanRegionText(value) {
+  return String(value || "").replace(/\u0000/g, "").replace(/\s+/g, " ").trim();
+}
+
+function escapeAttribute(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function normalizeProxyUrl(value) {
@@ -717,7 +846,7 @@ function saveSteepSlopeGeocodes(geocodes) {
 }
 
 function renderAll({ state, elements, mapState }) {
-  const filteredSites = heritageSites.filter((site) => state.categoryFilter.has(site.type));
+  const filteredSites = getFilteredSites(state);
   const dateKeys = getDateKeys(dateFromInput(elements), state.rangeDays);
   const filteredDetections = filterDetections(state.detections, {
     dateKeys,
@@ -732,9 +861,10 @@ function renderAll({ state, elements, mapState }) {
     vworldRisks: state.vworldRisks,
     getStoredRecord: getManagementRecord
   });
-  const hotspots = buildHotspotAreas(filteredDetections);
+  const visibleDetections = filterDetectionsForRegion(filteredDetections, filteredSites, state.regionQuery, state.radiusKm);
+  const hotspots = buildHotspotAreas(visibleDetections);
   const alerts = buildAlertCandidates(summaries);
-  const daily = aggregateDaily(dateKeys, filteredDetections, summaries);
+  const daily = aggregateDaily(dateKeys, visibleDetections, summaries);
   const report = buildPreventionReport(summaries, {
     radiusKm: state.radiusKm,
     mediumThreshold: state.mediumThreshold,
@@ -742,9 +872,11 @@ function renderAll({ state, elements, mapState }) {
   });
 
   if (mapState?.map) {
-    renderMap({ state, elements, mapState, sites: filteredSites, detections: filteredDetections, summaries, hotspots });
+    renderMap({ state, elements, mapState, sites: filteredSites, detections: visibleDetections, summaries, hotspots });
+    fitMapToRegion({ state, mapState, sites: filteredSites });
   }
-  renderMetrics({ elements, detections: filteredDetections, summaries, alerts });
+  renderRegionStatus({ state, elements, sites: filteredSites, summaries });
+  renderMetrics({ elements, detections: visibleDetections, summaries, alerts });
   if (elements.dailyChart) {
     renderDailyChart(elements.dailyChart, daily);
   }
@@ -762,6 +894,52 @@ function renderAll({ state, elements, mapState }) {
   }
 }
 
+function renderRegionStatus({ state, elements, sites, summaries }) {
+  if (!elements.regionStatus) {
+    return;
+  }
+  const query = state.regionQuery.trim();
+  const steepCount = filterSteepSlopeSites(state.regionQuery).length;
+  const atRisk = summaries.filter((summary) => summary.risk !== "low").length;
+  const topScore = summaries.length ? Math.max(...summaries.map((summary) => summary.riskScore)) : 0;
+  elements.regionStatus.textContent = query
+    ? `${query}: 문화유산 ${sites.length.toLocaleString("ko-KR")}건 · 급경사지 ${steepCount.toLocaleString("ko-KR")}건 · 위험 ${atRisk.toLocaleString("ko-KR")}건 · 최고 ${topScore.toFixed(1)}`
+    : `전체 지역: 문화유산 ${sites.length.toLocaleString("ko-KR")}건 · 급경사지 ${steepCount.toLocaleString("ko-KR")}건`;
+}
+
+function fitMapToRegion({ state, mapState, sites }) {
+  const query = state.regionQuery.trim();
+  const normalized = normalizeSearchText(query);
+  if (!normalized || !mapState?.map) {
+    return;
+  }
+  const steepSites = filterSteepSlopeSites(query);
+  const viewKey = `${normalized}:${sites.length}:${steepSites.length}`;
+  if (state.lastRegionViewKey === viewKey) {
+    return;
+  }
+
+  const points = [
+    ...sites.map((site) => [site.lat, site.lng]),
+    ...steepSites.map((site) => {
+      const geocode = state.steepSlopeGeocodes.get(site.id);
+      return [Number(geocode?.lat || site.lat), Number(geocode?.lng || site.lng)];
+    })
+  ].filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+
+  if (!points.length) {
+    state.lastRegionViewKey = viewKey;
+    return;
+  }
+
+  const bounds = L.latLngBounds(points);
+  mapState.map.fitBounds(bounds.pad(0.18), {
+    animate: true,
+    maxZoom: points.length === 1 ? 12 : 10
+  });
+  state.lastRegionViewKey = viewKey;
+}
+
 function renderMap({ state, elements, mapState, sites, detections, summaries, hotspots }) {
   const { map, layers } = mapState;
   layers.heritage.clearLayers();
@@ -773,7 +951,7 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
   const summaryById = new Map(summaries.map((summary) => [summary.site.id, summary]));
 
   if (state.environmentFactors.slope) {
-    renderSteepSlopeLayer(layers.steepSlope, state.steepSlopeGeocodes);
+    renderSteepSlopeLayer(layers.steepSlope, state.steepSlopeGeocodes, state.regionQuery);
   }
   renderVworldLayer(layers.vworld, summaries);
 
@@ -865,8 +1043,8 @@ function buildHeritagePopup(site, summary) {
   `;
 }
 
-function renderSteepSlopeLayer(layer, geocodes = new Map()) {
-  steepSlopeSites.forEach((site) => {
+function renderSteepSlopeLayer(layer, geocodes = new Map(), regionQuery = "") {
+  filterSteepSlopeSites(regionQuery).forEach((site) => {
     const geocode = geocodes.get(site.id);
     const lat = Number(geocode?.lat || site.lat);
     const lng = Number(geocode?.lng || site.lng);
@@ -1339,7 +1517,7 @@ function exportCurrentCsv({ state, elements }) {
     minConfidence: state.minConfidence,
     source: state.source
   });
-  const sites = heritageSites.filter((site) => state.categoryFilter.has(site.type));
+  const sites = getFilteredSites(state);
   const summaries = analyzeHeritageRisk(sites, detections, {
     radiusKm: state.radiusKm,
     mediumThreshold: state.mediumThreshold,
@@ -1496,7 +1674,7 @@ function buildCurrentReport({ state, elements }) {
     minConfidence: state.minConfidence,
     source: state.source
   });
-  const sites = heritageSites.filter((site) => state.categoryFilter.has(site.type));
+  const sites = getFilteredSites(state);
   const summaries = analyzeHeritageRisk(sites, detections, {
     radiusKm: state.radiusKm,
     mediumThreshold: state.mediumThreshold,

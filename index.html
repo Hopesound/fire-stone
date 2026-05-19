@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://tile.openstreetmap.org">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=steep-geocode-v10">
+    <link rel="stylesheet" href="styles.css?v=region-search-v11">
   </head>
   <body class="dashboard-page" data-page="map">
     <header class="app-header">
@@ -76,6 +76,17 @@
             <span>분석 반경 <strong id="radiusValue">10 km</strong></span>
             <input id="radiusRange" type="range" min="2" max="30" step="1" value="10">
           </label>
+        </section>
+
+        <section class="panel-section">
+          <h2>지역별 검색</h2>
+          <label class="field">
+            <span>지역명</span>
+            <input id="regionSearch" type="search" list="regionOptions" autocomplete="off" placeholder="예: 충청남도 공주시, 공주, 금산군">
+            <datalist id="regionOptions"></datalist>
+          </label>
+          <button id="clearRegion" class="secondary-button full-button" type="button">전체 지역</button>
+          <p id="regionStatus" class="status-text" role="status">전체 지역 표시</p>
         </section>
 
         <section class="panel-section">
@@ -317,7 +328,7 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module" src="app.js?v=steep-geocode-v10"></script>
+    <script type="module" src="app.js?v=region-search-v11"></script>
   </body>
 </html>
 
