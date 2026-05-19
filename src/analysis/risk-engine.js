@@ -1,3 +1,5 @@
+import { buildEnvironmentRisk } from "./environment-risk.js";
+
 export function filterDetections(detections, { dateKeys, minConfidence, source }) {
   const allowedDates = new Set(dateKeys);
   return detections.filter((detection) => {
@@ -10,9 +12,10 @@ export function filterDetections(detections, { dateKeys, minConfidence, source }
 }
 
 export function analyzeHeritageRisk(sites, detections, options) {
-  const { radiusKm, mediumThreshold, highThreshold, getStoredRecord } = options;
+  const { radiusKm, mediumThreshold, highThreshold, getStoredRecord, environmentFactors } = options;
 
   return sites.map((site) => {
+    const environment = buildEnvironmentRisk(site, environmentFactors);
     const nearby = detections
       .map((detection) => {
         const distance = distanceKm(site.lat, site.lng, detection.lat, detection.lng);
@@ -27,7 +30,8 @@ export function analyzeHeritageRisk(sites, detections, options) {
       .filter((detection) => detection.distanceKm <= radiusKm)
       .sort((a, b) => b.acqDate.localeCompare(a.acqDate) || b.weightedFrp - a.weightedFrp);
 
-    const riskScore = nearby.reduce((sum, detection) => sum + detection.weightedFrp, 0);
+    const fireRiskScore = nearby.reduce((sum, detection) => sum + detection.weightedFrp, 0);
+    const riskScore = fireRiskScore * environment.multiplier + environment.baseScore;
     const frpSum = nearby.reduce((sum, detection) => sum + detection.frp, 0);
     const closest = nearby.length ? Math.min(...nearby.map((detection) => detection.distanceKm)) : null;
     const maxFrp = nearby.length ? Math.max(...nearby.map((detection) => detection.frp)) : 0;
@@ -44,6 +48,8 @@ export function analyzeHeritageRisk(sites, detections, options) {
       nearby,
       risk,
       riskScore,
+      fireRiskScore,
+      environment,
       frpSum,
       avgFrp,
       maxFrp,
@@ -72,9 +78,11 @@ export function aggregateDaily(dateKeys, detections, summaries) {
   return dateKeys.map((key) => {
     const count = detections.filter((detection) => detection.acqDate === key).length;
     const score = summaries.reduce((sum, summary) => {
-      return sum + summary.nearby
+      const dateFireScore = summary.nearby
         .filter((detection) => detection.acqDate === key)
         .reduce((dateSum, detection) => dateSum + detection.weightedFrp, 0);
+      const environmentDailyScore = (summary.environment?.baseScore || 0) / dateKeys.length;
+      return sum + dateFireScore * (summary.environment?.multiplier || 1) + environmentDailyScore;
     }, 0);
     cumulativeCount += count;
     cumulativeScore += score;

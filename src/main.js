@@ -27,6 +27,10 @@ export function createFireStoneApp() {
     highThreshold: DEFAULTS.highThreshold,
     source: DEFAULTS.source,
     categoryFilter: new Set(["temple", "heritage", "house"]),
+    environmentFactors: {
+      conifer: true,
+      slope: true
+    },
     riskFilter: "all",
     selectedSiteId: null,
     detections: [],
@@ -85,6 +89,7 @@ function collectElements() {
     detailCount: document.getElementById("detailCount"),
     detailFrp: document.getElementById("detailFrp"),
     detailDistance: document.getElementById("detailDistance"),
+    detailEnvironment: document.getElementById("detailEnvironment"),
     managementStatus: document.getElementById("managementStatus"),
     managementNote: document.getElementById("managementNote"),
     saveManagement: document.getElementById("saveManagement"),
@@ -288,7 +293,9 @@ function bindEvents({ state, elements, mapState }) {
 
   document.querySelectorAll(".check-row input").forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
-      if (checkbox.checked) {
+      if (checkbox.value === "conifer" || checkbox.value === "slope") {
+        state.environmentFactors[checkbox.value] = checkbox.checked;
+      } else if (checkbox.checked) {
         state.categoryFilter.add(checkbox.value);
       } else {
         state.categoryFilter.delete(checkbox.value);
@@ -438,6 +445,7 @@ function renderAll({ state, elements, mapState }) {
     radiusKm: state.radiusKm,
     mediumThreshold: state.mediumThreshold,
     highThreshold: state.highThreshold,
+    environmentFactors: state.environmentFactors,
     getStoredRecord: getManagementRecord
   });
   const hotspots = buildHotspotAreas(filteredDetections);
@@ -640,6 +648,7 @@ function renderAlerts({ state, elements, mapState, alerts, summaries }) {
           <span class="risk-badge ${summary.risk}">${RISK_LABELS[summary.risk]}</span>
           <strong>${summary.site.name}</strong>
           <small>점수 ${summary.riskScore.toFixed(1)} · ${summary.nearby.length}개 픽셀 · 최근 ${last ? last.acqDate : "-"}</small>
+          <small>${summary.environment.label} · 침엽수 ${summary.environment.coniferScore} · 급경사 ${summary.environment.slopeScore}</small>
         </button>
       `;
     })
@@ -706,6 +715,10 @@ function renderPreventionReport({ state, elements, mapState, report, summaries }
           </td>
           <td><span class="risk-badge ${item.risk}">${item.riskLabel}</span></td>
           <td>${item.riskScore.toFixed(1)}</td>
+          <td>
+            <span class="risk-badge ${item.environmentGrade}">${item.environmentLabel}</span>
+            <small>침엽수 ${item.coniferScore} · 급경사 ${item.slopeScore}</small>
+          </td>
           <td>${closest}</td>
           <td>${item.frpSum.toFixed(1)} MW</td>
           <td><span class="priority-badge ${priorityClass(item.priority)}">${item.priority}</span></td>
@@ -760,6 +773,8 @@ function renderReportDetail(container, item) {
     <div class="report-kv">
       <div><span>문화유산 좌표</span><strong>${item.latitude.toFixed(5)}, ${item.longitude.toFixed(5)}</strong></div>
       <div><span>위험 등급/점수</span><strong>${item.riskLabel} · ${item.riskScore.toFixed(1)}</strong></div>
+      <div><span>침엽수/급경사 리스크</span><strong>${item.environmentLabel} · ${item.coniferScore} / ${item.slopeScore}</strong></div>
+      <div><span>환경 가중</span><strong>배수 ${item.environmentMultiplier.toFixed(2)} · 기초점수 ${item.environmentBaseScore.toFixed(1)}</strong></div>
       <div><span>반경 내 픽셀</span><strong>${item.nearbyPixels}개</strong></div>
       <div><span>FRP 합계/최대</span><strong>${item.frpSum.toFixed(1)} / ${item.maxFrp.toFixed(1)} MW</strong></div>
       <div><span>최단 거리</span><strong>${closest}</strong></div>
@@ -820,6 +835,7 @@ function renderHeritageList({ state, elements, summaries, mapState }) {
             </span>
             <span class="heritage-card-meta">
               <span class="meta-pill">점수 ${summary.riskScore.toFixed(1)}</span>
+              <span class="meta-pill">${summary.environment.label}</span>
               <span class="meta-pill">FRP ${summary.frpSum.toFixed(1)} MW</span>
               <span class="meta-pill">${site.isProtectionZone ? "보호구역" : "유산"}</span>
             </span>
@@ -867,6 +883,9 @@ function renderSelectedDetail({ state, elements, summaries }) {
   elements.detailCount.textContent = summary.nearby.length;
   elements.detailFrp.textContent = `${summary.frpSum.toFixed(1)} MW`;
   elements.detailDistance.textContent = summary.closest === null ? "-" : `${summary.closest.toFixed(1)} km`;
+  if (elements.detailEnvironment) {
+    elements.detailEnvironment.textContent = `${summary.environment.label} ${summary.environment.combinedScore.toFixed(0)}`;
+  }
   elements.managementStatus.value = summary.status;
   elements.managementNote.value = summary.note;
 
@@ -899,6 +918,7 @@ function exportCurrentCsv({ state, elements }) {
     radiusKm: state.radiusKm,
     mediumThreshold: state.mediumThreshold,
     highThreshold: state.highThreshold,
+    environmentFactors: state.environmentFactors,
     getStoredRecord: getManagementRecord
   });
   const rows = [
@@ -916,6 +936,10 @@ function exportCurrentCsv({ state, elements }) {
       "frp_sum_mw",
       "max_brightness_k",
       "closest_km",
+      "environment_label",
+      "conifer_score",
+      "slope_score",
+      "environment_multiplier",
       "status"
     ]
   ];
@@ -935,6 +959,10 @@ function exportCurrentCsv({ state, elements }) {
       summary.frpSum.toFixed(2),
       summary.maxBrightness.toFixed(2),
       summary.closest === null ? "" : summary.closest.toFixed(2),
+      summary.environment.label,
+      summary.environment.coniferScore,
+      summary.environment.slopeScore,
+      summary.environment.multiplier,
       summary.status
     ]);
   });
@@ -962,6 +990,12 @@ function exportPreventionReport({ state, elements, format }) {
     longitude: item.longitude,
     risk_label: item.riskLabel,
     risk_score: Number(item.riskScore.toFixed(2)),
+    fire_risk_score: Number(item.fireRiskScore.toFixed(2)),
+    environment_label: item.environmentLabel,
+    environment_score: item.environmentScore,
+    conifer_score: item.coniferScore,
+    slope_score: item.slopeScore,
+    environment_multiplier: item.environmentMultiplier,
     priority: item.priority,
     nearby_pixels: item.nearbyPixels,
     frp_sum_mw: Number(item.frpSum.toFixed(2)),
@@ -1006,6 +1040,7 @@ function buildCurrentReport({ state, elements }) {
     radiusKm: state.radiusKm,
     mediumThreshold: state.mediumThreshold,
     highThreshold: state.highThreshold,
+    environmentFactors: state.environmentFactors,
     getStoredRecord: getManagementRecord
   });
   return buildPreventionReport(summaries, {

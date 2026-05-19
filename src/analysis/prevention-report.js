@@ -28,6 +28,14 @@ export function buildPreventionReport(summaries, options) {
         risk: summary.risk,
         riskLabel: RISK_LABELS[summary.risk],
         riskScore: summary.riskScore,
+        fireRiskScore: summary.fireRiskScore,
+        environmentLabel: summary.environment.label,
+        environmentGrade: summary.environment.grade,
+        environmentScore: summary.environment.combinedScore,
+        coniferScore: summary.environment.coniferScore,
+        slopeScore: summary.environment.slopeScore,
+        environmentMultiplier: summary.environment.multiplier,
+        environmentBaseScore: summary.environment.baseScore,
         priority,
         priorityScore,
         nearbyPixels: summary.nearby.length,
@@ -66,7 +74,8 @@ function buildPriorityScore(summary, highThreshold) {
   const scoreFactor = highThreshold > 0 ? (summary.riskScore / highThreshold) * 60 : summary.riskScore;
   const densityFactor = Math.min(20, summary.nearby.length * 3);
   const powerFactor = Math.min(20, summary.maxFrp / 2);
-  return Math.round((scoreFactor + nearestFactor + densityFactor + powerFactor) * 10) / 10;
+  const environmentFactor = Math.min(15, summary.environment?.priorityBoost || 0);
+  return Math.round((scoreFactor + nearestFactor + densityFactor + powerFactor + environmentFactor) * 10) / 10;
 }
 
 function classifyPriority(risk, priorityScore) {
@@ -80,6 +89,7 @@ function classifyPriority(risk, priorityScore) {
 }
 
 function buildPreventionAction(summary, nearest, priority) {
+  const environmentAction = buildEnvironmentAction(summary);
   if (priority === "즉시점검") {
     return {
       level: "emergency",
@@ -87,6 +97,7 @@ function buildPreventionAction(summary, nearest, priority) {
       items: [
         "관리자에게 즉시 알림을 발송하고 관할 소방·지자체 연락망을 확인합니다.",
         "문화유산 주변 가연물, 탐방로, 전기 설비, 산림 접경부를 우선 점검합니다.",
+        environmentAction,
         nearest
           ? `최근 탐지 픽셀 위치(${nearest.lat.toFixed(5)}, ${nearest.lng.toFixed(5)})와 문화유산 간 최단거리 ${nearest.distanceKm.toFixed(1)} km를 현장지도에 표시합니다.`
           : "FIRMS 탐지 위치를 현장지도에 표시합니다."
@@ -101,6 +112,7 @@ function buildPreventionAction(summary, nearest, priority) {
       items: [
         "다음 위성 갱신 주기까지 FIRMS 감지 변화와 FRP 증가 여부를 확인합니다.",
         "건조·강풍 예보가 있으면 순찰 주기와 CCTV 확인 빈도를 높입니다.",
+        environmentAction,
         "소화전, 방화수, 진입로, 비상 연락망 상태를 사전 확인합니다."
       ]
     };
@@ -111,7 +123,22 @@ function buildPreventionAction(summary, nearest, priority) {
     title: "정기 관리 유지",
     items: [
       "정기 순찰과 방재 설비 점검 일정을 유지합니다.",
+      environmentAction,
       "FIRMS 감지 수, FRP, 최단거리 지표가 상승하면 강화모니터링으로 전환합니다."
     ]
   };
+}
+
+function buildEnvironmentAction(summary) {
+  const environment = summary.environment;
+  if (!environment) {
+    return "주변 산림·지형 위험 정보를 확인합니다.";
+  }
+  if (environment.grade === "high") {
+    return `침엽수 ${environment.coniferScore}점, 급경사 ${environment.slopeScore}점으로 주변 환경 위험이 높으므로 낙엽·고사목 제거와 사면 방향 확산 경로를 우선 확인합니다.`;
+  }
+  if (environment.grade === "medium") {
+    return `침엽수 ${environment.coniferScore}점, 급경사 ${environment.slopeScore}점 수준을 반영해 산림 접경부와 경사지 진입로를 추가 점검합니다.`;
+  }
+  return `침엽수 ${environment.coniferScore}점, 급경사 ${environment.slopeScore}점으로 환경 위험은 낮지만 건조·강풍 시 재확인합니다.`;
 }

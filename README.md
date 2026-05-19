@@ -12,6 +12,7 @@
 - MAP_KEY 없이 검토 가능한 샘플 FIRMS 픽셀 데이터
 - 주/월/년 단위 일별 감지 수, 누적 위험 점수 차트
 - 거리 가중 FRP 기반 위험도 자동 산출
+- 침엽수·급경사 주변 환경 추정치를 반영한 위험점수, 순위보고서, 위험도 표출
 - 문화유산별 인근 화재 픽셀 이력, 관리 상태, 메모, CSV 내보내기
 - 주의/높음 등급 문화유산 알림 후보 목록
 - 위험 점수, 좌표, 최단거리, FRP, 예방 조치를 포함한 의사결정 보고서
@@ -42,6 +43,16 @@ src/main.js                    # 지도/대시보드 UI 조립
 weight = 1 / (1 + (d / r)^2)
 risk_score = sum(weight * FRP)
 ```
+
+현재 화면에서는 침엽수·급경사 주변 환경 리스크를 함께 반영합니다.
+
+```text
+environment_multiplier = 1 + conifer_score * 0.0018 + slope_score * 0.0012
+environment_base_score = conifer_score * 0.035 + slope_score * 0.03
+risk_score = fire_risk_score * environment_multiplier + environment_base_score
+```
+
+침엽수·급경사 점수는 문화유산 위치, 지역, 유형, 보호구역 여부를 기반으로 한 추정치입니다. 실제 산림도/DEM 자료가 확보되면 `src/analysis/environment-risk.js`의 추정 로직을 원자료 기반 산식으로 교체할 수 있습니다.
 
 기본 등급:
 

@@ -320,6 +320,14 @@ button {
   background: var(--blue);
 }
 
+.legend-dot.conifer {
+  background: #2f7d32;
+}
+
+.legend-dot.slope {
+  background: #8b5a2b;
+}
+
 .action-row {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -662,7 +670,7 @@ button {
 
 .report-table {
   width: 100%;
-  min-width: 980px;
+  min-width: 1080px;
   border-collapse: collapse;
   font-size: 0.82rem;
 }
@@ -964,7 +972,7 @@ button {
 
 .detail-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
 }
 

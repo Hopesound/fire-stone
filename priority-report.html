@@ -67,6 +67,12 @@
           <label class="check-row"><input type="checkbox" value="house" checked><span class="legend-dot house"></span><span>고택·마을</span></label>
         </section>
         <section class="panel-section">
+          <h2>주변 환경</h2>
+          <label class="check-row"><input type="checkbox" value="conifer" checked><span class="legend-dot conifer"></span><span>침엽수 리스크</span></label>
+          <label class="check-row"><input type="checkbox" value="slope" checked><span class="legend-dot slope"></span><span>급경사 리스크</span></label>
+          <p class="status-text">주변 산림·지형 추정치를 위험점수에 반영합니다.</p>
+        </section>
+        <section class="panel-section">
           <h2>실데이터 연결</h2>
           <label class="field"><span>FIRMS MAP_KEY</span><input id="mapKey" type="password" autocomplete="off" placeholder="샘플 검토 후 입력"></label>
           <label class="field"><span>FIRMS 프록시 URL</span><input id="proxyUrl" type="url" autocomplete="off" placeholder="GitHub Pages 실데이터용"></label>
@@ -100,6 +106,7 @@
                   <th>좌표</th>
                   <th>위험</th>
                   <th>점수</th>
+                  <th>환경</th>
                   <th>최단거리</th>
                   <th>FRP</th>
                   <th>예방 판단</th>
