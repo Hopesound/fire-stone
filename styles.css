@@ -89,6 +89,7 @@ button {
   display: grid;
   flex: 1;
   gap: 8px;
+  justify-items: end;
   min-width: 0;
   max-width: none;
 }
@@ -150,9 +151,11 @@ button {
 
 .header-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(142px, 1fr));
+  grid-template-columns: repeat(4, max-content);
+  justify-content: end;
   gap: 8px;
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
   min-width: 0;
 }
 
@@ -162,7 +165,9 @@ button {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  width: max-content;
   min-width: 0;
+  max-width: 100%;
   padding: 7px 10px;
   border: 1px solid rgba(255, 250, 241, 0.22);
   border-radius: 8px;
@@ -1047,9 +1052,11 @@ button {
   }
 
   .header-metrics {
-    width: 100%;
+    width: max-content;
+    max-width: 100%;
     min-width: 0;
-    grid-template-columns: repeat(4, minmax(132px, 1fr));
+    grid-template-columns: repeat(4, max-content);
+    justify-content: start;
   }
 
   .header-main,
