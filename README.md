@@ -73,7 +73,7 @@ npm run build:heritage
 
 ## 실행
 
-`index.html`을 직접 열거나 로컬 정적 서버를 실행합니다.
+샘플 데이터만 볼 때는 `index.html`을 직접 열 수 있습니다. FIRMS `MAP_KEY`로 실데이터를 불러오려면 CORS 우회를 위해 로컬 정적 서버를 실행합니다.
 
 ```powershell
 npm run serve
@@ -105,6 +105,7 @@ https://firms.modaps.eosdis.nasa.gov/api/area/csv/[MAP_KEY]/[SOURCE]/[AREA_COORD
 - `AREA_COORDINATES`는 `west,south,east,north` 순서입니다.
 - `DATE`는 조회 시작일이며 `YYYY-MM-DD` 형식입니다.
 - 실시간 데이터 조회에는 FIRMS `MAP_KEY`가 필요합니다.
+- 브라우저 CORS 차단을 피하기 위해 로컬 개발 서버의 `/api/firms/area` 프록시를 통해 FIRMS CSV를 조회합니다.
 
 Official references:
 
@@ -113,7 +114,7 @@ Official references:
 
 ## 다음 구현 단계
 
-1. 브라우저 CORS나 FIRMS 키 보호가 필요하면 FastAPI 프록시를 추가합니다.
+1. 운영 배포에서 FIRMS 키 보호가 필요하면 FastAPI 등 서버 프록시로 확장합니다.
 2. 관리 상태와 분석 결과를 PostgreSQL + PostGIS에 저장합니다.
 3. `src/analysis/risk-engine.js`의 임계값을 과거 데이터로 보정합니다.
 4. 보호구역 폴리곤 자체를 지도에 그리는 상세 레이어를 추가합니다.

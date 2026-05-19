@@ -15,7 +15,7 @@ import { buildPreventionReport, summarizeReport } from "./analysis/prevention-re
 
 const LIST_LIMIT = 250;
 const RADIUS_LAYER_LIMIT = 80;
-const PAGE_IDS = new Set(["daily", "report", "heritage"]);
+const PAGE_IDS = new Set(["map", "daily", "report", "heritage"]);
 
 export function createFireStoneApp() {
   const state = {
@@ -469,7 +469,7 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
         `<h3 class="popup-title">${site.name}</h3>
          <p class="popup-line">${TYPE_LABELS[site.type]} · ${site.region || "-"}</p>
          <p class="popup-line">${site.designation || site.sourceLayer || "문화유산"} · ${site.isProtectionZone ? "보호구역" : "유산"}</p>
-         <p class="popup-line">위험 점수 ${summary ? summary.riskScore.toFixed(1) : "0.0"}</p>`
+         <p class="popup-line">위험점수 ${summary ? summary.riskScore.toFixed(1) : "0.0"}</p>`
       )
       .addTo(layers.heritage);
 
@@ -539,7 +539,7 @@ function renderDailyChart(container, daily) {
     .join("");
 
   container.innerHTML = `
-    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="일별 감지 수와 누적 위험 점수">
+    <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="일별 감지 수와 누적 위험점수">
       <line x1="0" y1="${chartBottom}" x2="${width}" y2="${chartBottom}" stroke="#ded8cc"></line>
       <line x1="0" y1="${chartTop}" x2="${width}" y2="${chartTop}" stroke="#eee8dc"></line>
       ${bars}
@@ -552,7 +552,7 @@ function renderDailyChart(container, daily) {
         })
         .join("")}
       <text x="0" y="12" font-size="11" font-weight="800" fill="#c94a35">일별 픽셀</text>
-      <text x="70" y="12" font-size="11" font-weight="800" fill="#31755b">누적 위험 점수</text>
+      <text x="70" y="12" font-size="11" font-weight="800" fill="#31755b">누적 위험점수</text>
     </svg>
   `;
 }
@@ -617,7 +617,7 @@ function renderPreventionReport({ state, elements, mapState, report, summaries }
     </div>
     <div>
       <span>${reportSummary.topScore.toFixed(1)}</span>
-      <small>최고 위험 점수</small>
+      <small>최고 위험점수</small>
     </div>
   `;
 

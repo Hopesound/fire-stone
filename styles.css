@@ -95,7 +95,7 @@ button {
 
 .app-nav {
   display: grid;
-  grid-template-columns: repeat(3, max-content);
+  grid-template-columns: repeat(4, max-content);
   justify-content: end;
   gap: 8px;
   width: 100%;
@@ -103,6 +103,7 @@ button {
 
 .nav-link {
   min-height: 34px;
+  min-width: 68px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -149,7 +150,7 @@ button {
 
 .header-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(126px, 1fr));
+  grid-template-columns: repeat(4, minmax(142px, 1fr));
   gap: 8px;
   width: 100%;
   min-width: 0;
@@ -161,6 +162,7 @@ button {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
   padding: 7px 10px;
   border: 1px solid rgba(255, 250, 241, 0.22);
   border-radius: 8px;
@@ -189,6 +191,7 @@ button {
 .header-metrics small {
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: max-content;
   white-space: nowrap;
 }
 
@@ -1028,6 +1031,7 @@ button {
   .header-metrics {
     width: 100%;
     min-width: 0;
+    grid-template-columns: repeat(4, minmax(132px, 1fr));
   }
 
   .header-main,
