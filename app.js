@@ -1,3 +1,3 @@
-import { createFireStoneApp } from "./src/main.js?v=env-data-v6";
+import { createFireStoneApp } from "./src/main.js?v=steep-slope-map-v7";
 
 createFireStoneApp();

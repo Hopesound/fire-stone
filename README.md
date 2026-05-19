@@ -57,6 +57,8 @@ risk_score = fire_risk_score * environment_multiplier + environment_base_score
 - 충청남도 재난안전포털 급경사지 현황: 주소의 시군명을 문화유산 지역명과 매칭해 충남 문화유산의 급경사 점수를 보정합니다. 원본에 좌표가 없으므로 현재는 시군 단위 매칭입니다.
 - 산림청 수종별 조림면적(침엽수) 시계열 데이터: 2020~2024년 총 침엽수 조림면적, 5년 평균, 최신연도 추세를 침엽수 연료 취약도 보정 신호로 사용합니다.
 
+급경사지 현황은 `tools/convert-steep-slopes.mjs`로 `src/data/steep-slope-sites.generated.js`에 변환되며, 지도에는 갈색 점으로 표시됩니다. 원본 CSV에 위경도가 없으므로 현재 지도 위치는 주소의 시군 중심과 주소별 오프셋을 이용한 추정 위치입니다.
+
 세부 데이터는 `src/data/environment-datasets.js`, 반영 산식은 `src/analysis/environment-risk.js`에 있습니다. 실제 산림도/DEM/급경사지 좌표 자료가 확보되면 시군 단위 보정치를 좌표 기반 거리 보정으로 교체할 수 있습니다.
 
 기본 등급:

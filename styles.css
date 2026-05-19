@@ -469,6 +469,11 @@ button {
   border: 1px solid var(--green);
 }
 
+.swatch.steep-slope {
+  background: #8b5a2b;
+  border: 1px solid #5f4428;
+}
+
 .analytics-band,
 .report-band,
 .heritage-band {

@@ -1,5 +1,6 @@
 import { DEFAULTS, KOREA_BBOX, RISK_LABELS, TYPE_LABELS } from "./config.js";
 import { heritageSites } from "./data/heritage-sites.js";
+import { steepSlopeSites } from "./data/steep-slope-sites.generated.js";
 import { buildSampleDetections } from "./data/sample-firms.js";
 import { fetchFirmsArea } from "./services/firms-api.js";
 import { getManagementRecord, saveManagementRecord } from "./services/storage.js";
@@ -139,6 +140,7 @@ function initMap() {
     heritage: L.layerGroup().addTo(map),
     detection: L.layerGroup().addTo(map),
     area: L.layerGroup().addTo(map),
+    steepSlope: L.layerGroup().addTo(map),
     radius: L.layerGroup().addTo(map)
   };
 
@@ -497,8 +499,13 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
   layers.heritage.clearLayers();
   layers.detection.clearLayers();
   layers.area.clearLayers();
+  layers.steepSlope.clearLayers();
   layers.radius.clearLayers();
   const summaryById = new Map(summaries.map((summary) => [summary.site.id, summary]));
+
+  if (state.environmentFactors.slope) {
+    renderSteepSlopeLayer(layers.steepSlope);
+  }
 
   hotspots.forEach((hotspot) => {
     L.circle([hotspot.lat, hotspot.lng], {
@@ -568,6 +575,26 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
       renderSelectedDetail({ state, elements, summaries });
       map.setView([site.lat, site.lng], Math.max(map.getZoom(), 10), { animate: true });
     });
+  });
+}
+
+function renderSteepSlopeLayer(layer) {
+  steepSlopeSites.forEach((site) => {
+    L.circleMarker([site.lat, site.lng], {
+      radius: 3.8,
+      color: "#5f4428",
+      weight: 1,
+      opacity: 0.9,
+      fillColor: "#8b5a2b",
+      fillOpacity: 0.72
+    })
+      .bindPopup(
+        `<h3 class="popup-title">충청남도 급경사지</h3>
+         <p class="popup-line">${site.address || "-"}</p>
+         <p class="popup-line">${site.city || "-"} · ${site.department || site.manager || "관리부서 미기재"}</p>
+         <p class="popup-line">${site.coordinateAccuracy}</p>`
+      )
+      .addTo(layer);
   });
 }
 
