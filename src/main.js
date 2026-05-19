@@ -3,6 +3,7 @@ import { heritageSites } from "./data/heritage-sites.js";
 import { steepSlopeSites } from "./data/steep-slope-sites.generated.js";
 import { buildSampleDetections } from "./data/sample-firms.js";
 import { fetchFirmsArea } from "./services/firms-api.js";
+import { fetchVworldAddressCoord } from "./services/vworld-geocoder.js";
 import { fetchVworldFireRisk, getDefaultVworldDomain } from "./services/vworld-api.js";
 import { getManagementRecord, saveManagementRecord } from "./services/storage.js";
 import { formatAcqTime, getDateKeys, parseDate, toDateInput } from "./utils/date.js";
@@ -21,6 +22,7 @@ const PAGE_IDS = new Set(["map", "daily", "report", "heritage"]);
 const FIRMS_PROXY_STORAGE_KEY = "fire-stone-firms-proxy-url";
 const VWORLD_KEY_STORAGE_KEY = "fire-stone-vworld-api-key";
 const VWORLD_DOMAIN_STORAGE_KEY = "fire-stone-vworld-domain";
+const STEEP_SLOPE_GEOCODE_STORAGE_KEY = "fire-stone-steep-slope-geocodes-v1";
 const VWORLD_QUERY_LIMIT = 80;
 
 export function createFireStoneApp() {
@@ -41,6 +43,7 @@ export function createFireStoneApp() {
     detections: [],
     vworldRisks: new Map(),
     vworldRiskDate: "",
+    steepSlopeGeocodes: loadSteepSlopeGeocodes(),
     usingLiveData: false
   };
 
@@ -80,6 +83,7 @@ function collectElements() {
     vworldKey: document.getElementById("vworldKey"),
     vworldDomain: document.getElementById("vworldDomain"),
     loadVworld: document.getElementById("loadVworld"),
+    loadSteepGeocode: document.getElementById("loadSteepGeocode"),
     loadSample: document.getElementById("loadSample"),
     loadFirms: document.getElementById("loadFirms"),
     dataStatus: document.getElementById("dataStatus"),
@@ -361,6 +365,10 @@ function bindEvents({ state, elements, mapState }) {
     await loadVworldRisks({ state, elements, mapState });
   });
 
+  elements.loadSteepGeocode?.addEventListener("click", async () => {
+    await geocodeSteepSlopeSites({ state, elements, mapState });
+  });
+
   elements.exportCsv?.addEventListener("click", () => {
     exportCurrentCsv({ state, elements });
   });
@@ -485,6 +493,66 @@ async function loadVworldRisks({ state, elements, mapState }) {
       ? `V-World 산불위험예측 ${success.toLocaleString("ko-KR")}건을 반영했습니다.${failed ? ` 실패 ${failed.toLocaleString("ko-KR")}건` : ""}`
       : `V-World 산불위험예측 불러오기 실패: ${failures[0] || "인증키, 도메인, 날짜를 확인하세요."}`;
   elements.loadVworld.disabled = false;
+  renderAll({ state, elements, mapState });
+}
+
+async function geocodeSteepSlopeSites({ state, elements, mapState }) {
+  const apiKey = elements.vworldKey?.value.trim() || "";
+  const domain = (elements.vworldDomain?.value.trim() || getDefaultVworldDomain()).replace(/\/$/, "");
+  if (!apiKey) {
+    elements.dataStatus.textContent = "급경사지 주소좌표 보정을 위해 V-World 인증키를 입력하세요.";
+    return;
+  }
+
+  if (elements.vworldKey) {
+    saveVworldKey(apiKey);
+  }
+  if (elements.vworldDomain) {
+    elements.vworldDomain.value = domain;
+    saveVworldDomain(domain);
+  }
+
+  const targets = steepSlopeSites.filter((site) => !state.steepSlopeGeocodes.has(site.id));
+  if (!targets.length) {
+    elements.dataStatus.textContent = `급경사지 ${state.steepSlopeGeocodes.size.toLocaleString("ko-KR")}건이 이미 주소좌표로 보정되어 있습니다.`;
+    renderAll({ state, elements, mapState });
+    return;
+  }
+
+  elements.loadSteepGeocode.disabled = true;
+  elements.dataStatus.textContent = `급경사지 주소좌표 ${targets.length.toLocaleString("ko-KR")}건을 V-World로 보정하는 중입니다.`;
+
+  let completed = 0;
+  let failed = 0;
+  const failures = [];
+
+  await runConcurrent(targets, 3, async (site) => {
+    try {
+      const coord = await fetchVworldAddressCoord({ apiKey, domain, address: site.address });
+      state.steepSlopeGeocodes.set(site.id, {
+        ...coord,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      failed += 1;
+      if (failures.length < 3) {
+        failures.push(`${site.address}: ${error.message}`);
+      }
+    } finally {
+      completed += 1;
+      if (completed % 10 === 0 || completed === targets.length) {
+        saveSteepSlopeGeocodes(state.steepSlopeGeocodes);
+        elements.dataStatus.textContent = `급경사지 주소좌표 보정 ${completed}/${targets.length}건 완료`;
+      }
+    }
+  });
+
+  saveSteepSlopeGeocodes(state.steepSlopeGeocodes);
+  elements.loadSteepGeocode.disabled = false;
+  elements.dataStatus.textContent =
+    state.steepSlopeGeocodes.size > 0
+      ? `급경사지 ${state.steepSlopeGeocodes.size.toLocaleString("ko-KR")}건을 주소좌표 기반으로 표시합니다.${failed ? ` 실패 ${failed.toLocaleString("ko-KR")}건` : ""}`
+      : `급경사지 주소좌표 보정 실패: ${failures[0] || "인증키와 도메인을 확인하세요."}`;
   renderAll({ state, elements, mapState });
 }
 
@@ -625,6 +693,29 @@ function saveVworldDomain(value) {
   }
 }
 
+function loadSteepSlopeGeocodes() {
+  try {
+    const raw = window.localStorage.getItem(STEEP_SLOPE_GEOCODE_STORAGE_KEY);
+    if (!raw) {
+      return new Map();
+    }
+    const entries = Object.entries(JSON.parse(raw)).filter(([, value]) => {
+      return Number.isFinite(Number(value.lat)) && Number.isFinite(Number(value.lng));
+    });
+    return new Map(entries);
+  } catch {
+    return new Map();
+  }
+}
+
+function saveSteepSlopeGeocodes(geocodes) {
+  try {
+    window.localStorage.setItem(STEEP_SLOPE_GEOCODE_STORAGE_KEY, JSON.stringify(Object.fromEntries(geocodes)));
+  } catch {
+    // localStorage can be unavailable or full in strict browser privacy modes.
+  }
+}
+
 function renderAll({ state, elements, mapState }) {
   const filteredSites = heritageSites.filter((site) => state.categoryFilter.has(site.type));
   const dateKeys = getDateKeys(dateFromInput(elements), state.rangeDays);
@@ -682,7 +773,7 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
   const summaryById = new Map(summaries.map((summary) => [summary.site.id, summary]));
 
   if (state.environmentFactors.slope) {
-    renderSteepSlopeLayer(layers.steepSlope);
+    renderSteepSlopeLayer(layers.steepSlope, state.steepSlopeGeocodes);
   }
   renderVworldLayer(layers.vworld, summaries);
 
@@ -774,26 +865,32 @@ function buildHeritagePopup(site, summary) {
   `;
 }
 
-function renderSteepSlopeLayer(layer) {
+function renderSteepSlopeLayer(layer, geocodes = new Map()) {
   steepSlopeSites.forEach((site) => {
+    const geocode = geocodes.get(site.id);
+    const lat = Number(geocode?.lat || site.lat);
+    const lng = Number(geocode?.lng || site.lng);
+    const coordinateAccuracy = geocode?.coordinateAccuracy || site.coordinateAccuracy;
     const popupHtml = `
       <h3 class="popup-title">충청남도 급경사지</h3>
       <p class="popup-line">${site.address || "-"}</p>
       <p class="popup-line">${site.city || "-"} · ${site.department || site.manager || "관리부서 미기재"}</p>
-      <p class="popup-line">${site.coordinateAccuracy}</p>
+      <p class="popup-line">${coordinateAccuracy}</p>
+      ${geocode?.matchedAddress ? `<p class="popup-line">매칭주소 ${geocode.matchedAddress}</p>` : ""}
+      <p class="popup-line">좌표 ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
     `;
-    const marker = L.circleMarker([site.lat, site.lng], {
-      radius: 3.8,
-      color: "#5f4428",
+    const marker = L.circleMarker([lat, lng], {
+      radius: geocode ? 4.8 : 3.8,
+      color: geocode ? "#173f72" : "#5f4428",
       weight: 1,
       opacity: 0.9,
-      fillColor: "#8b5a2b",
-      fillOpacity: 0.72
+      fillColor: geocode ? "#2f6fb3" : "#8b5a2b",
+      fillOpacity: 0.76
     })
       .bindPopup(popupHtml)
       .addTo(layer);
-    const hitArea = L.circleMarker([site.lat, site.lng], hitAreaStyle(15)).bindPopup(popupHtml).addTo(layer);
-    bindWideMarkerEvents({ marker, hitArea, baseRadius: 3.8, baseWeight: 1 });
+    const hitArea = L.circleMarker([lat, lng], hitAreaStyle(15)).bindPopup(popupHtml).addTo(layer);
+    bindWideMarkerEvents({ marker, hitArea, baseRadius: geocode ? 4.8 : 3.8, baseWeight: 1 });
   });
 }
 

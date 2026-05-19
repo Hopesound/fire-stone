@@ -488,6 +488,11 @@ button {
   border: 1px solid #5f4428;
 }
 
+.swatch.steep-slope-geocoded {
+  background: #2f6fb3;
+  border: 1px solid #173f72;
+}
+
 .swatch.vworld {
   background: #d79226;
   border: 1px solid #9a3d27;

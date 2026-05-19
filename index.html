@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://tile.openstreetmap.org">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=map-hit-v9">
+    <link rel="stylesheet" href="styles.css?v=steep-geocode-v10">
   </head>
   <body class="dashboard-page" data-page="map">
     <header class="app-header">
@@ -151,6 +151,7 @@
             <button id="loadFirms" class="primary-button" type="button">FIRMS 불러오기</button>
           </div>
           <button id="loadVworld" class="secondary-button full-button" type="button">V-World 산불예측 불러오기</button>
+          <button id="loadSteepGeocode" class="secondary-button full-button" type="button">급경사지 주소좌표 보정</button>
           <p id="dataStatus" class="status-text" role="status">샘플 데이터가 표시됩니다.</p>
         </section>
       </aside>
@@ -176,7 +177,11 @@
           </div>
           <div class="overlay-item">
             <span class="swatch steep-slope"></span>
-            <span>급경사지 추정 위치</span>
+            <span>급경사지 추정</span>
+          </div>
+          <div class="overlay-item">
+            <span class="swatch steep-slope-geocoded"></span>
+            <span>급경사지 주소좌표</span>
           </div>
           <div class="overlay-item">
             <span class="swatch vworld"></span>
@@ -312,7 +317,7 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module" src="app.js?v=map-hit-v9"></script>
+    <script type="module" src="app.js?v=steep-geocode-v10"></script>
   </body>
 </html>
 
