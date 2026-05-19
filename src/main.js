@@ -176,14 +176,17 @@ function initPageNavigation(mapState) {
   }
 
   function setPage(page, options = {}) {
-    const activePage = PAGE_IDS.has(page) ? page : null;
+    const activePage = PAGE_IDS.has(page) ? page : "map";
+    const isAnalysisPage = activePage !== "map";
     const activePageElement = pages.find((pageElement) => pageElement.dataset.page === activePage);
+    document.body.dataset.page = activePage;
+    document.body.classList.toggle("is-analysis-view", isAnalysisPage);
     links.forEach((link) => {
       link.classList.toggle("is-active", link.dataset.page === activePage);
       link.setAttribute("aria-current", link.dataset.page === activePage ? "page" : "false");
     });
     pages.forEach((pageElement) => {
-      pageElement.classList.toggle("is-active", Boolean(activePage) && pageElement.dataset.page === activePage);
+      pageElement.classList.toggle("is-active", isAnalysisPage && pageElement.dataset.page === activePage);
     });
     requestAnimationFrame(() => {
       if (mapState?.map) {
@@ -205,20 +208,21 @@ function initPageNavigation(mapState) {
       if (!PAGE_IDS.has(nextPage)) {
         return;
       }
-      if (window.location.hash === `#${nextPage}`) {
+      const nextHash = `#${nextPage}`;
+      if (window.location.hash === nextHash) {
         setPage(nextPage, { scrollToPage: true });
       } else {
-        window.location.hash = nextPage;
+        window.location.hash = nextHash;
         setPage(nextPage, { scrollToPage: true });
       }
     });
   });
 
   window.addEventListener("hashchange", () => {
-    setPage(pageFromHash());
+    setPage(pageFromHash() || pageFromDocument() || "map");
   });
 
-  setPage(pageFromDocument() || pageFromHash());
+  setPage(pageFromHash() || pageFromDocument() || "map");
 }
 
 function bindEvents({ state, elements, mapState }) {

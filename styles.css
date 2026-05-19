@@ -460,7 +460,23 @@ button {
   display: block;
 }
 
-.dashboard-page .page-view {
+.dashboard-page:not(.is-analysis-view) .page-view {
+  display: none;
+}
+
+.dashboard-page.is-analysis-view .app-shell {
+  grid-template-rows: minmax(620px, calc(100vh - 88px));
+}
+
+.dashboard-page:has(.page-view.is-active) .app-shell {
+  grid-template-rows: minmax(620px, calc(100vh - 88px));
+}
+
+.dashboard-page.is-analysis-view .map-workspace {
+  display: none;
+}
+
+.dashboard-page:has(.page-view.is-active) .map-workspace {
   display: none;
 }
 
@@ -474,7 +490,9 @@ button {
   display: none;
 }
 
-.route-page .page-view.is-active {
+.route-page .page-view.is-active,
+.dashboard-page.is-analysis-view .page-view.is-active,
+.dashboard-page:has(.page-view.is-active) .page-view.is-active {
   grid-column: 2;
   grid-row: 1;
   border-top: 0;
@@ -1052,7 +1070,19 @@ button {
     grid-template-rows: auto auto;
   }
 
-  .route-page .page-view.is-active {
+  .dashboard-page.is-analysis-view .app-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .dashboard-page:has(.page-view.is-active) .app-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .route-page .page-view.is-active,
+  .dashboard-page.is-analysis-view .page-view.is-active,
+  .dashboard-page:has(.page-view.is-active) .page-view.is-active {
     grid-column: 1;
     grid-row: auto;
   }

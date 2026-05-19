@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://tile.openstreetmap.org">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=analysis-pages">
   </head>
   <body class="dashboard-page" data-page="map">
     <header class="app-header">
@@ -35,10 +35,10 @@
           </div>
         </div>
         <nav class="app-nav" aria-label="분석 페이지">
-          <a class="nav-link is-active" href="index.html" data-page="map" data-route="page">MAP</a>
-          <a class="nav-link" href="risk-score.html" data-page="daily" data-route="page">위험점수</a>
-          <a class="nav-link" href="priority-report.html" data-page="report" data-route="page">순위보고서</a>
-          <a class="nav-link" href="heritage-risk.html" data-page="heritage" data-route="page">위험도</a>
+          <a class="nav-link is-active" href="#map" data-page="map" data-route="view">MAP</a>
+          <a class="nav-link" href="#daily" data-page="daily" data-route="view">위험점수</a>
+          <a class="nav-link" href="#report" data-page="report" data-route="view">순위보고서</a>
+          <a class="nav-link" href="#heritage" data-page="heritage" data-route="view">위험도</a>
         </nav>
       </div>
     </header>
@@ -271,6 +271,6 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=analysis-pages"></script>
   </body>
 </html>
