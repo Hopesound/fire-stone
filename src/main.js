@@ -693,7 +693,8 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
       weight: 1,
       opacity: 0.7,
       fillColor: "#c94a35",
-      fillOpacity: 0.19
+      fillOpacity: 0.19,
+      interactive: false
     })
       .bindPopup(
         `<h3 class="popup-title">핫스팟 면적</h3>
@@ -734,32 +735,54 @@ function renderMap({ state, elements, mapState, sites, detections, summaries, ho
         weight: 1,
         opacity: 0.38,
         fillColor: color,
-        fillOpacity: 0.04
+        fillOpacity: 0.04,
+        interactive: false
       }).addTo(layers.radius);
     });
 
   sites.forEach((site) => {
     const summary = summaryById.get(site.id);
-    const marker = L.circleMarker([site.lat, site.lng], heritagePointStyle(site, summary))
-      .bindPopup(
-        `<h3 class="popup-title">${site.name}</h3>
-         <p class="popup-line">${TYPE_LABELS[site.type]} · ${site.region || "-"}</p>
-         <p class="popup-line">${site.designation || site.sourceLayer || "문화유산"} · ${site.isProtectionZone ? "보호구역" : "유산"}</p>
-         <p class="popup-line">위험점수 ${summary ? summary.riskScore.toFixed(1) : "0.0"}</p>`
-      )
-      .addTo(layers.heritage);
+    const style = heritagePointStyle(site, summary);
+    const popupHtml = buildHeritagePopup(site, summary);
+    const marker = L.circleMarker([site.lat, site.lng], style).bindPopup(popupHtml).addTo(layers.heritage);
+    const hitArea = L.circleMarker([site.lat, site.lng], hitAreaStyle(18)).bindPopup(popupHtml).addTo(layers.heritage);
 
-    marker.on("click", () => {
+    const selectSite = () => {
       state.selectedSiteId = site.id;
       renderSelectedDetail({ state, elements, summaries });
       map.setView([site.lat, site.lng], Math.max(map.getZoom(), 10), { animate: true });
-    });
+    };
+    bindWideMarkerEvents({ marker, hitArea, baseRadius: style.radius, baseWeight: style.weight, onClick: selectSite });
   });
+}
+
+function buildHeritagePopup(site, summary) {
+  const environment = summary?.environment;
+  const vworld = summary?.vworld;
+  return `
+    <h3 class="popup-title">${site.name}</h3>
+    <p class="popup-line">${TYPE_LABELS[site.type]} · ${site.region || "-"}</p>
+    <p class="popup-line">${site.designation || site.sourceLayer || "문화유산"} · ${site.isProtectionZone ? "보호구역" : "유산"}</p>
+    <p class="popup-line">위험점수 ${summary ? summary.riskScore.toFixed(1) : "0.0"} · ${summary ? RISK_LABELS[summary.risk] : "낮음"}</p>
+    ${
+      environment
+        ? `<p class="popup-line">침엽수 리스크 ${environment.coniferScore} · 급경사 리스크 ${environment.slopeScore}</p>
+           <p class="popup-line">${environment.evidenceSummary || "주변 환경 추정치"}</p>`
+        : ""
+    }
+    ${vworld ? `<p class="popup-line">${vworld.label} · ${vworld.peakHour || "-"}시 · +${vworld.baseScore.toFixed(1)}</p>` : ""}
+  `;
 }
 
 function renderSteepSlopeLayer(layer) {
   steepSlopeSites.forEach((site) => {
-    L.circleMarker([site.lat, site.lng], {
+    const popupHtml = `
+      <h3 class="popup-title">충청남도 급경사지</h3>
+      <p class="popup-line">${site.address || "-"}</p>
+      <p class="popup-line">${site.city || "-"} · ${site.department || site.manager || "관리부서 미기재"}</p>
+      <p class="popup-line">${site.coordinateAccuracy}</p>
+    `;
+    const marker = L.circleMarker([site.lat, site.lng], {
       radius: 3.8,
       color: "#5f4428",
       weight: 1,
@@ -767,13 +790,10 @@ function renderSteepSlopeLayer(layer) {
       fillColor: "#8b5a2b",
       fillOpacity: 0.72
     })
-      .bindPopup(
-        `<h3 class="popup-title">충청남도 급경사지</h3>
-         <p class="popup-line">${site.address || "-"}</p>
-         <p class="popup-line">${site.city || "-"} · ${site.department || site.manager || "관리부서 미기재"}</p>
-         <p class="popup-line">${site.coordinateAccuracy}</p>`
-      )
+      .bindPopup(popupHtml)
       .addTo(layer);
+    const hitArea = L.circleMarker([site.lat, site.lng], hitAreaStyle(15)).bindPopup(popupHtml).addTo(layer);
+    bindWideMarkerEvents({ marker, hitArea, baseRadius: 3.8, baseWeight: 1 });
   });
 }
 
@@ -783,7 +803,13 @@ function renderVworldLayer(layer, summaries) {
     .forEach((summary) => {
       const risk = summary.vworld;
       const color = vworldColor(risk.maxClass);
-      L.circleMarker([summary.site.lat, summary.site.lng], {
+      const popupHtml = `
+        <h3 class="popup-title">V-World 산불위험예측</h3>
+        <p class="popup-line">${summary.site.name}</p>
+        <p class="popup-line">${risk.label} · 최고등급 ${risk.maxClass} · 최대값 ${risk.maxValue.toFixed(1)}</p>
+        <p class="popup-line">최고 시간 ${risk.peakHour || "-"}시 · 위험점수 보정 +${risk.baseScore.toFixed(1)}</p>
+      `;
+      const marker = L.circleMarker([summary.site.lat, summary.site.lng], {
         radius: 8,
         color: "#ffffff",
         weight: 1.6,
@@ -791,14 +817,45 @@ function renderVworldLayer(layer, summaries) {
         fillColor: color,
         fillOpacity: 0.8
       })
-        .bindPopup(
-          `<h3 class="popup-title">V-World 산불위험예측</h3>
-           <p class="popup-line">${summary.site.name}</p>
-           <p class="popup-line">${risk.label} · 최고등급 ${risk.maxClass} · 최대값 ${risk.maxValue.toFixed(1)}</p>
-           <p class="popup-line">최고 시간 ${risk.peakHour || "-"}시 · 위험점수 보정 +${risk.baseScore.toFixed(1)}</p>`
-        )
+        .bindPopup(popupHtml)
         .addTo(layer);
+      const hitArea = L.circleMarker([summary.site.lat, summary.site.lng], hitAreaStyle(20)).bindPopup(popupHtml).addTo(layer);
+      bindWideMarkerEvents({ marker, hitArea, baseRadius: 8, baseWeight: 1.6 });
     });
+}
+
+function hitAreaStyle(radius) {
+  return {
+    radius,
+    color: "#1f2522",
+    weight: 0,
+    opacity: 0,
+    fillColor: "#1f2522",
+    fillOpacity: 0.01,
+    interactive: true
+  };
+}
+
+function bindWideMarkerEvents({ marker, hitArea, baseRadius, baseWeight, onClick }) {
+  const baseOpacity = marker.options.opacity;
+  const baseFillOpacity = marker.options.fillOpacity;
+  const activate = () => {
+    marker.setRadius(Math.max(baseRadius + 3, 7));
+    marker.setStyle({ weight: Math.max(baseWeight + 1, 2), opacity: 1, fillOpacity: Math.min(0.95, baseFillOpacity + 0.12) });
+  };
+  const deactivate = () => {
+    marker.setRadius(baseRadius);
+    marker.setStyle({ weight: baseWeight, opacity: baseOpacity, fillOpacity: baseFillOpacity });
+  };
+  [marker, hitArea].forEach((target) => {
+    target.on("mouseover", activate);
+    target.on("mouseout", deactivate);
+    target.on("click", () => {
+      if (onClick) {
+        onClick();
+      }
+    });
+  });
 }
 
 function vworldColor(value) {

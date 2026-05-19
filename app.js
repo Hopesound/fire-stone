@@ -1,3 +1,3 @@
-import { createFireStoneApp } from "./src/main.js?v=vworld-risk-v8";
+import { createFireStoneApp } from "./src/main.js?v=map-hit-v9";
 
 createFireStoneApp();
