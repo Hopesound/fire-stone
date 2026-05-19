@@ -16,6 +16,7 @@ import { buildPreventionReport, summarizeReport } from "./analysis/prevention-re
 const LIST_LIMIT = 250;
 const RADIUS_LAYER_LIMIT = 80;
 const PAGE_IDS = new Set(["map", "daily", "report", "heritage"]);
+const FIRMS_PROXY_STORAGE_KEY = "fire-stone-firms-proxy-url";
 
 export function createFireStoneApp() {
   const state = {
@@ -36,6 +37,9 @@ export function createFireStoneApp() {
   const mapState = initMap();
 
   elements.endDate.value = toDateInput(new Date());
+  if (elements.proxyUrl) {
+    elements.proxyUrl.value = loadProxyUrl();
+  }
   state.detections = buildSampleDetections({ endDate: dateFromInput(elements), source: state.source });
   elements.dataStatus.textContent = `heritage 폴더 데이터 ${heritageSites.length.toLocaleString("ko-KR")}건을 분석 대상으로 불러왔습니다. 주·월·년 단위 누적 분석을 선택할 수 있습니다.`;
 
@@ -55,6 +59,7 @@ function collectElements() {
     mediumThreshold: document.getElementById("mediumThreshold"),
     highThreshold: document.getElementById("highThreshold"),
     mapKey: document.getElementById("mapKey"),
+    proxyUrl: document.getElementById("proxyUrl"),
     loadSample: document.getElementById("loadSample"),
     loadFirms: document.getElementById("loadFirms"),
     dataStatus: document.getElementById("dataStatus"),
@@ -277,6 +282,10 @@ function bindEvents({ state, elements, mapState }) {
     });
   });
 
+  elements.proxyUrl?.addEventListener("change", () => {
+    saveProxyUrl(elements.proxyUrl.value);
+  });
+
   document.querySelectorAll(".check-row input").forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) {
@@ -332,9 +341,19 @@ function bindEvents({ state, elements, mapState }) {
 
 async function loadLiveFirms({ state, elements, mapState }) {
   const mapKey = elements.mapKey.value.trim();
-  if (!mapKey) {
-    elements.dataStatus.textContent = "FIRMS MAP_KEY를 입력하거나 샘플 데이터를 사용하세요.";
+  const proxyUrl = normalizeProxyUrl(elements.proxyUrl?.value || "");
+  if (!mapKey && !proxyUrl) {
+    elements.dataStatus.textContent = "FIRMS MAP_KEY를 입력하거나 MAP_KEY가 설정된 FIRMS 프록시 URL을 입력하세요.";
     return;
+  }
+  if (requiresHostedProxy() && !proxyUrl) {
+    elements.dataStatus.textContent =
+      "GitHub Pages에서는 NASA FIRMS 직접 호출이 브라우저에서 차단됩니다. FIRMS 프록시 URL을 입력하거나 로컬 서버(npm run serve)에서 실행하세요.";
+    return;
+  }
+  if (elements.proxyUrl) {
+    elements.proxyUrl.value = proxyUrl;
+    saveProxyUrl(proxyUrl);
   }
 
   elements.dataStatus.textContent =
@@ -349,7 +368,8 @@ async function loadLiveFirms({ state, elements, mapState }) {
       source: state.source,
       bbox: KOREA_BBOX,
       endDate: dateFromInput(elements),
-      rangeDays: state.rangeDays
+      rangeDays: state.rangeDays,
+      proxyUrl
     });
     state.usingLiveData = true;
     state.detections = detections;
@@ -359,6 +379,50 @@ async function loadLiveFirms({ state, elements, mapState }) {
     elements.dataStatus.textContent = `FIRMS 불러오기 실패: ${error.message}`;
   } finally {
     elements.loadFirms.disabled = false;
+  }
+}
+
+function normalizeProxyUrl(value) {
+  const url = value.trim();
+  if (!url) {
+    return "";
+  }
+  try {
+    const parsed = new URL(url, window.location.href);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return "";
+    }
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
+function requiresHostedProxy() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return !["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
+function loadProxyUrl() {
+  try {
+    return window.localStorage.getItem(FIRMS_PROXY_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveProxyUrl(value) {
+  try {
+    const proxyUrl = normalizeProxyUrl(value);
+    if (proxyUrl) {
+      window.localStorage.setItem(FIRMS_PROXY_STORAGE_KEY, proxyUrl);
+    } else {
+      window.localStorage.removeItem(FIRMS_PROXY_STORAGE_KEY);
+    }
+  } catch {
+    // localStorage can be unavailable in strict browser privacy modes.
   }
 }
 

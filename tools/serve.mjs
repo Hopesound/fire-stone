@@ -14,10 +14,26 @@ const types = {
   ".svg": "image/svg+xml"
 };
 
+const apiCorsHeaders = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, OPTIONS",
+  "access-control-allow-headers": "content-type, accept"
+};
+
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://127.0.0.1:${port}`);
 
   if (url.pathname === "/api/firms/area") {
+    if (request.method === "OPTIONS") {
+      response.writeHead(204, apiCorsHeaders);
+      response.end();
+      return;
+    }
+    if (request.method !== "GET") {
+      response.writeHead(405, { ...apiCorsHeaders, "content-type": "text/plain; charset=utf-8" });
+      response.end("Method not allowed");
+      return;
+    }
     await proxyFirmsArea(url, response);
     return;
   }
@@ -51,7 +67,7 @@ async function proxyFirmsArea(url, response) {
   const date = url.searchParams.get("date") || "";
 
   if (!mapKey || !source || !area || !Number.isInteger(days) || days < 1 || days > 10 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+    response.writeHead(400, { ...apiCorsHeaders, "content-type": "text/plain; charset=utf-8" });
     response.end("Missing or invalid FIRMS proxy parameters");
     return;
   }
@@ -66,12 +82,13 @@ async function proxyFirmsArea(url, response) {
     });
     const body = Buffer.from(await upstream.arrayBuffer());
     response.writeHead(upstream.status, {
+      ...apiCorsHeaders,
       "content-type": upstream.headers.get("content-type") || "text/csv; charset=utf-8",
       "cache-control": "no-store"
     });
     response.end(body);
   } catch (error) {
-    response.writeHead(502, { "content-type": "text/plain; charset=utf-8" });
+    response.writeHead(502, { ...apiCorsHeaders, "content-type": "text/plain; charset=utf-8" });
     response.end(`FIRMS proxy failed: ${error.message}`);
   }
 }

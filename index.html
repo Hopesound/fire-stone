@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="utf-8">
@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://unpkg.com">
     <link rel="preconnect" href="https://tile.openstreetmap.org">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=mobile-compact-v2">
+    <link rel="stylesheet" href="styles.css?v=firms-proxy-v4">
   </head>
   <body class="dashboard-page" data-page="map">
     <header class="app-header">
@@ -116,6 +116,10 @@
           <label class="field">
             <span>FIRMS MAP_KEY</span>
             <input id="mapKey" type="password" autocomplete="off" placeholder="샘플 검토 후 입력">
+          </label>
+          <label class="field">
+            <span>FIRMS 프록시 URL</span>
+            <input id="proxyUrl" type="url" autocomplete="off" placeholder="GitHub Pages 실데이터용">
           </label>
           <div class="action-row">
             <button id="loadSample" class="icon-button" type="button" title="샘플 데이터로 보기" aria-label="샘플 데이터로 보기">
@@ -271,6 +275,7 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module" src="app.js?v=mobile-compact-v2"></script>
+    <script type="module" src="app.js?v=firms-proxy-v4"></script>
   </body>
 </html>
+

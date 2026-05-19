@@ -1,6 +1,6 @@
 import { addDays, toDateInput } from "../utils/date.js";
 
-export async function fetchFirmsArea({ mapKey, source, bbox, endDate, rangeDays }) {
+export async function fetchFirmsArea({ mapKey, source, bbox, endDate, rangeDays, proxyUrl = "" }) {
   const chunks = buildFirmsChunks(endDate, rangeDays);
   const allRows = [];
 
@@ -11,7 +11,8 @@ export async function fetchFirmsArea({ mapKey, source, bbox, endDate, rangeDays 
       source,
       area,
       days: chunk.days,
-      start: chunk.start
+      start: chunk.start,
+      proxyUrl
     });
     allRows.push(...parseFirmsCsv(csv, source));
   }
@@ -31,20 +32,20 @@ async function requestFirmsCsv(request) {
       });
       if (!response.ok) {
         const message = await response.text();
-        if (attempt.isProxy && response.status === 404) {
+        if (attempt.isLocalProxy && response.status === 404) {
           lastError = new Error("로컬 FIRMS 프록시를 찾을 수 없습니다.");
           continue;
         }
-        throw new Error(formatHttpError(response.status, message));
+        throw new Error(formatHttpError(attempt.label, response.status, message));
       }
       return response.text();
     } catch (error) {
       lastError = error;
       if (isFetchBlocked(error)) {
-        directFetchBlocked = !attempt.isProxy || directFetchBlocked;
-        continue;
-      }
-      if (attempt.isProxy && attempts.length > 1 && isFetchBlocked(error)) {
+        if (attempt.isProxy) {
+          throw new Error(`${attempt.label}에 연결할 수 없습니다. 프록시 주소와 CORS 허용 설정을 확인하세요.`);
+        }
+        directFetchBlocked = true;
         continue;
       }
       throw error;
@@ -52,29 +53,50 @@ async function requestFirmsCsv(request) {
   }
 
   if (directFetchBlocked) {
-    throw new Error("NASA FIRMS 직접 호출이 브라우저에서 차단되었습니다. 로컬 서버의 FIRMS 프록시로 실행하세요.");
+    throw new Error("NASA FIRMS 직접 호출이 브라우저에서 차단되었습니다. 로컬 서버 또는 별도 FIRMS 프록시 URL로 실행하세요.");
   }
   throw lastError || new Error("FIRMS 요청에 실패했습니다.");
 }
 
-function buildRequestAttempts({ mapKey, source, area, days, start }) {
+function buildRequestAttempts({ mapKey, source, area, days, start, proxyUrl }) {
   const directUrl = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(
     mapKey
   )}/${encodeURIComponent(source)}/${area}/${days}/${start}`;
   const attempts = [];
 
-  if (shouldUseLocalProxy()) {
-    const proxyUrl = new URL("/api/firms/area", window.location.href);
-    proxyUrl.searchParams.set("mapKey", mapKey);
-    proxyUrl.searchParams.set("source", source);
-    proxyUrl.searchParams.set("area", area);
-    proxyUrl.searchParams.set("days", String(days));
-    proxyUrl.searchParams.set("date", start);
-    attempts.push({ url: proxyUrl.toString(), isProxy: true });
+  if (proxyUrl) {
+    attempts.push({
+      url: buildProxyRequestUrl(proxyUrl, { mapKey, source, area, days, start }),
+      isProxy: true,
+      isLocalProxy: false,
+      label: "FIRMS 프록시"
+    });
+    return attempts;
   }
 
-  attempts.push({ url: directUrl, isProxy: false });
+  if (shouldUseLocalProxy()) {
+    attempts.push({
+      url: buildProxyRequestUrl("/api/firms/area", { mapKey, source, area, days, start }),
+      isProxy: true,
+      isLocalProxy: true,
+      label: "로컬 FIRMS 프록시"
+    });
+  }
+
+  attempts.push({ url: directUrl, isProxy: false, isLocalProxy: false, label: "NASA FIRMS" });
   return attempts;
+}
+
+function buildProxyRequestUrl(baseUrl, { mapKey, source, area, days, start }) {
+  const url = new URL(baseUrl, window.location.href);
+  if (mapKey) {
+    url.searchParams.set("mapKey", mapKey);
+  }
+  url.searchParams.set("source", source);
+  url.searchParams.set("area", area);
+  url.searchParams.set("days", String(days));
+  url.searchParams.set("date", start);
+  return url.toString();
 }
 
 function shouldUseLocalProxy() {
@@ -88,9 +110,9 @@ function isFetchBlocked(error) {
   return error instanceof TypeError || /failed to fetch/i.test(error.message || "");
 }
 
-function formatHttpError(status, message) {
+function formatHttpError(label, status, message) {
   const detail = String(message || "").trim().replace(/\s+/g, " ").slice(0, 160);
-  return detail ? `FIRMS HTTP ${status}: ${detail}` : `FIRMS HTTP ${status}`;
+  return detail ? `${label} HTTP ${status}: ${detail}` : `${label} HTTP ${status}`;
 }
 
 export function buildFirmsChunks(endDate, rangeDays) {

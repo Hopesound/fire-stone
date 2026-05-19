@@ -30,6 +30,7 @@ src/services/firms-api.js      # NASA FIRMS Area API 수집/CSV 파서
 src/services/storage.js        # 관리 상태 로컬 저장
 src/analysis/risk-engine.js    # 반경 검색, 거리 가중치, 위험 점수, 알림 후보
 src/analysis/prevention-report.js # 예방 우선순위 보고서와 조치 권고
+tools/firms-proxy-worker.js    # GitHub Pages 실데이터용 Cloudflare Worker 프록시 예시
 src/main.js                    # 지도/대시보드 UI 조립
 ```
 
@@ -107,6 +108,16 @@ https://firms.modaps.eosdis.nasa.gov/api/area/csv/[MAP_KEY]/[SOURCE]/[AREA_COORD
 - `DATE`는 조회 시작일이며 `YYYY-MM-DD` 형식입니다.
 - 실시간 데이터 조회에는 FIRMS `MAP_KEY`가 필요합니다.
 - 브라우저 CORS 차단을 피하기 위해 로컬 개발 서버의 `/api/firms/area` 프록시를 통해 FIRMS CSV를 조회합니다.
+- GitHub Pages는 정적 호스팅이라 `/api/firms/area` 같은 서버 기능을 직접 제공하지 않습니다. 공개 페이지에서 실데이터를 쓰려면 Cloudflare Worker, Vercel Function, FastAPI 같은 별도 프록시가 필요합니다.
+
+### GitHub Pages에서 실데이터 연결
+
+1. `tools/firms-proxy-worker.js` 내용을 Cloudflare Worker에 배포합니다.
+2. Worker 환경변수 `FIRMS_MAP_KEY`에 NASA FIRMS 키를 저장하거나, 화면에서 `FIRMS MAP_KEY`를 직접 입력합니다.
+3. 배포된 Worker URL을 화면의 `FIRMS 프록시 URL`에 입력합니다.
+4. `FIRMS 불러오기`를 누릅니다.
+
+프록시 URL은 한 번 입력하면 브라우저 `localStorage`에 저장됩니다. 로컬에서 테스트할 때는 `npm run serve`로 실행하면 `http://127.0.0.1:5173/api/firms/area` 프록시가 자동으로 사용됩니다.
 
 Official references:
 
