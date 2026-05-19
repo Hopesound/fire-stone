@@ -1187,3 +1187,65 @@ button {
     padding: 0 8px;
   }
 }
+
+@media (max-width: 760px) {
+  .header-dashboard {
+    justify-items: start;
+    width: 100%;
+  }
+
+  .header-metrics {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    grid-template-columns: none !important;
+    justify-content: flex-start !important;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .header-metrics div {
+    flex: 0 1 auto;
+    width: auto;
+    max-width: calc(50% - 3px);
+    min-height: 34px;
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .header-metrics span {
+    font-size: clamp(0.88rem, 4.2vw, 0.98rem);
+  }
+
+  .header-metrics small {
+    min-width: 0;
+    font-size: clamp(0.62rem, 2.8vw, 0.68rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-nav {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start;
+    gap: 5px;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link {
+    flex: 0 0 auto;
+    min-width: 52px;
+    min-height: 32px;
+    padding: 6px 8px;
+    font-size: clamp(0.68rem, 3.2vw, 0.78rem);
+    white-space: nowrap;
+  }
+}
