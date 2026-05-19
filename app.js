@@ -1,5 +1,3 @@
-﻿import { createFireStoneApp } from "./src/main.js?v=firms-proxy-v5";
+import { createFireStoneApp } from "./src/main.js?v=env-data-v6";
 
 createFireStoneApp();
-
-

@@ -663,6 +663,7 @@ function renderAlerts({ state, elements, mapState, alerts, summaries }) {
           <strong>${summary.site.name}</strong>
           <small>점수 ${summary.riskScore.toFixed(1)} · ${summary.nearby.length}개 픽셀 · 최근 ${last ? last.acqDate : "-"}</small>
           <small>${summary.environment.label} · 침엽수 ${summary.environment.coniferScore} · 급경사 ${summary.environment.slopeScore}</small>
+          ${summary.environment.evidenceSummary ? `<small class="environment-source">${summary.environment.evidenceSummary}</small>` : ""}
         </button>
       `;
     })
@@ -732,6 +733,7 @@ function renderPreventionReport({ state, elements, mapState, report, summaries }
           <td>
             <span class="risk-badge ${item.environmentGrade}">${item.environmentLabel}</span>
             <small>침엽수 ${item.coniferScore} · 급경사 ${item.slopeScore}</small>
+            ${item.environmentEvidence ? `<small class="environment-source">${item.environmentEvidence}</small>` : ""}
           </td>
           <td>${closest}</td>
           <td>${item.frpSum.toFixed(1)} MW</td>
@@ -789,6 +791,7 @@ function renderReportDetail(container, item) {
       <div><span>위험 등급/점수</span><strong>${item.riskLabel} · ${item.riskScore.toFixed(1)}</strong></div>
       <div><span>침엽수/급경사 리스크</span><strong>${item.environmentLabel} · ${item.coniferScore} / ${item.slopeScore}</strong></div>
       <div><span>환경 가중</span><strong>배수 ${item.environmentMultiplier.toFixed(2)} · 기초점수 ${item.environmentBaseScore.toFixed(1)}</strong></div>
+      <div><span>환경 원자료</span><strong>${item.environmentEvidence || "지역 추정치"}</strong></div>
       <div><span>반경 내 픽셀</span><strong>${item.nearbyPixels}개</strong></div>
       <div><span>FRP 합계/최대</span><strong>${item.frpSum.toFixed(1)} / ${item.maxFrp.toFixed(1)} MW</strong></div>
       <div><span>최단 거리</span><strong>${closest}</strong></div>
@@ -899,6 +902,7 @@ function renderSelectedDetail({ state, elements, summaries }) {
   elements.detailDistance.textContent = summary.closest === null ? "-" : `${summary.closest.toFixed(1)} km`;
   if (elements.detailEnvironment) {
     elements.detailEnvironment.textContent = `${summary.environment.label} ${summary.environment.combinedScore.toFixed(0)}`;
+    elements.detailEnvironment.title = summary.environment.evidenceSummary || "지역 추정치";
   }
   elements.managementStatus.value = summary.status;
   elements.managementNote.value = summary.note;
@@ -954,6 +958,12 @@ function exportCurrentCsv({ state, elements }) {
       "conifer_score",
       "slope_score",
       "environment_multiplier",
+      "environment_evidence",
+      "conifer_latest_year",
+      "conifer_latest_area_ha",
+      "conifer_trend_pct",
+      "slope_data_city",
+      "slope_data_count",
       "status"
     ]
   ];
@@ -977,6 +987,12 @@ function exportCurrentCsv({ state, elements }) {
       summary.environment.coniferScore,
       summary.environment.slopeScore,
       summary.environment.multiplier,
+      summary.environment.evidenceSummary || "",
+      summary.environment.evidence?.conifer?.latestYear || "",
+      summary.environment.evidence?.conifer?.latestTotalAreaHa || "",
+      summary.environment.evidence?.conifer?.trendPct || "",
+      summary.environment.evidence?.slope?.city || "",
+      summary.environment.evidence?.slope?.count || "",
       summary.status
     ]);
   });
@@ -1010,6 +1026,12 @@ function exportPreventionReport({ state, elements, format }) {
     conifer_score: item.coniferScore,
     slope_score: item.slopeScore,
     environment_multiplier: item.environmentMultiplier,
+    environment_evidence: item.environmentEvidence,
+    conifer_latest_year: item.coniferLatestYear,
+    conifer_latest_area_ha: item.coniferLatestAreaHa,
+    conifer_trend_pct: item.coniferTrendPct,
+    slope_data_city: item.slopeDataCity,
+    slope_data_count: item.slopeDataCount,
     priority: item.priority,
     nearby_pixels: item.nearbyPixels,
     frp_sum_mw: Number(item.frpSum.toFixed(2)),

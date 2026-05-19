@@ -373,6 +373,14 @@ button {
   line-height: 1.45;
 }
 
+.environment-source {
+  display: block;
+  margin-top: 3px;
+  color: #6f6658;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .map-workspace {
   position: relative;
   min-width: 0;
